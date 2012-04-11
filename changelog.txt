@@ -1,0 +1,73 @@
+SPOT change log
+--------------
+
+22.03.10
+Initial SVN commit.
+
+28.02.10
+
+a better working ltid_pass.m
+ltid_vwqt2ph.m
+
+25.02.10
+
+mss_m2bs.m    to complement   mss_v2s.m
+ltid_pass.m   to replace      ltid_passive.m
+
+11.01.10
+
+introduced spot_chk.m
+
+05.10.09
+
+fixed a bug in msspoly/subsasgn.m
+new function msspoly/msubs.m for vectorized sampling of msspoly
+simulation and piecewise polynomial function handling in the new pot/sim directory
+updated pot_install.m
+
+15.07.09
+
+introduced accurate algorithm option in ltid_vw2ab.m and ltid_vw2ab_psd.m
+
+07.07.09
+
+ltid functions re-written and re-named to follow a uniform convention
+
+01.07.09
+
+passive MIMO LTI sysid code, summarized in ltid_passive.m is added
+
+24.06.09
+
+fixed a bug in ltid_abpsd.m
+
+06.05.09
+
+added the option of registering 
+multiple SeDuMi-style decision variable 
+cones (of the same size/type) in one step
+
+ltid_abcrpsd: multivariable LTI sysID with
+
+25.02.09
+
+modified mint_v2i to remove 
+repeated rows in its argument
+
+
+20.02.09 
+
+modified msspoly/mtimes.m 
+to improve efficiency and memory handling
+
+new: msspoly/nnewton.m
+Newton iterations with normalization
+
+new: msspoly/mono0.m
+A new monomial generation function
+
+new: msspoly/mono_down.m
+A new monomial generation function
+
+new: nlid_siso* function set
+Nonlinear SISO system identification

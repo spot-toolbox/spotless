@@ -1,0 +1,461 @@
+\documentclass{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{verbatim}
+\usepackage{listings}
+\lstset{frame=single,language=Matlab}
+\newcommand{\RR}{\mathbb{R}}
+\title{Robust Identification Tools}
+\author{Mark M. Tobenkin}
+\begin{document}
+\begin{abstract}
+This toolbox is a subset of SPOT currently
+used for determining nonlinear models satisfying variaous stability
+properties from time domain data.  We generally have inputs $u(t) \in
+\RR^{n_u}$ and outputs $y(t) \in \RR^{n_y}$ for a set of trials.  Most
+of the tools require approximate ``states'' of the system, $x(t) \in
+\RR^{n_x}$, and the toolbox provides some simple functions for
+computing state surrogates.
+
+This manual is in {\it alpha}.  It is incomplete and a work in
+progress.  Please report bugs to Mark M. Tobenkin $<$mmt at mit dot edu$>$.
+\end{abstract}
+\section{Introduction}
+Not yet supported:
+\begin{itemize}
+  \item Continuous time models (dealing with the subtleties of
+    derivative estimation).
+\end{itemize}
+
+
+
+\subsection{Quick Start}
+The general work flow consists of the following:
+\begin{enumerate}
+\item Create an {\tt ridata} object from input / output data.
+\item Generate candidate states if states are not directly measured, and estimate derivatives for CT models.
+\item Construct and {\tt ripmodel} structure, choosing model type and order.
+\item Add constraints and objectives to the model, sub-selecting representative data.
+\item Run the optimization.
+\item Simulate the model and compare to validation data.
+\end{enumerate}
+The following is an example of a DT fitting procedure contained in
+{\tt spot/rid/simple\_dt\_example.m}:
+\begin{verbatim}
+load simple_dt_example;
+data = ridata({Ytrain,Ytest},{Utrain,Utest},{Ttrain,Ttest});
+[data,g] = states(data,'time-delay',0,0);
+
+train = trials(data,1);
+test = trials(data,2);
+
+model = ripmodel(data,1,[7 1],g); % -- True system outside
+                                  %    model class.
+
+%model = lse_obj(model,data); %-- Equation Error.
+
+dsel = unf_select(train,300); %-- Representative subset of samples.
+
+model = rie_obj(model,dsel);  %-- Local Robust Identification Error.
+
+model = model.optimize();
+val = model.validate(data);
+\end{verbatim}
+
+\section{{\tt ridata} | Time Domain Data}
+The {\tt ridata} data structure stores time domain data for
+identification.  The structure stores a set of $M$ {\it trials}.  The
+following table describes the member variables:
+
+\begin{center}
+  \begin{tabular}{|l|l|l|}
+    \hline
+    Name & Dim. & Desc.\\
+    \hline
+    \multicolumn{3}{|c|}{Input-Output Data}\\
+    \hline
+    {\tt nu} & scalar & Input dimension, nonnegative integer.\\
+    {\tt ny} & scalar & Output dimension, positive integer.\\
+   {\tt N} & {\tt 1 $\times$ M} & Trial lengths, positive integers. \\
+    {\tt D} & scalar & The number of samples (equal to {\tt sum(N)}).\\
+    {\tt T} & {\tt 1 $\times$ D} & Concatenated sample
+    times. \\
+    {\tt Y} & {\tt ny $\times$ D} & Concatenated  output samples. \\
+  {\tt U} & {\tt nu $\times$ D} &Concatenated input samples.\\
+\hline
+  \multicolumn{3}{|c|}{State Space Data}\\
+  \hline
+  {\tt nx} & scalar & State dimension, nonnegative integer.\\
+ {\tt X} & {\tt nx $\times$ D} & State
+  samples, all trials if {\tt nx} non-zero, empty otherwise.\\
+  {\tt V} & {\tt nx $\times$ D} & Update
+  samples, all trials if {\tt nx} non-zero, empty otherwise.\\
+  {\tt dT} & scalar & Scalar.  {\tt dT = 0}
+  indiciates a CT model, {\tt dT < 0} unspecified.\\
+\hline
+ \end{tabular}
+\end{center}
+At a minimum, each trial consists of a vector of sample times, {\tt
+  T}, a sequence of outputs, {\tt Y}, and a sequence of inputs {\tt
+  U}.  Additionally, a trial may have a sequence of state estimates,
+{\tt X}, and a sequence of {\it update information}, {\tt V}.  For CT
+models, the update information approximates the derivative of the
+states, $\frac{d}{dt} x(t)$, and for DT models the update information
+is imply the state at the next time sample.
+
+The following methods construct an {\tt ridata}:
+\begin{verbatim}
+d = ridata(Y,U,T)
+d = ridata(Y,U,T,X,V,dT)
+\end{verbatim}
+The scalar {\tt dT} can either be $0$, indicating that {\tt V} is the derivative of {\tt X}, or a positive scalar, indicating a DT data set.
+All arguments other than {\tt dT} can either be a cell array or matricies.  If they are matricies the data is assumed to be from a single trial and  then the following table relates their dimensions:
+\begin{center}
+  \begin{tabular}{l|l}
+  {\tt T} & $1 \times N$ \\
+  {\tt Y} & $n_y \times N$ \\
+  {\tt U} & $n_u \times N$ \\
+  {\tt X},{\tt V} & $n_x \times N$
+  \end{tabular}
+\end{center}
+If the arguments are cell arrays they must all have identical
+dimensions, and each entry is considered a single trial.  The
+corresponding cell entries must be related as above, and the same
+$n_u,n_y,n_x$ must be used for every entry.
+\subsection{Selecting and Combining Data}
+There are several methods for refining and combining {\tt ridata}
+objects.
+\subsubsection{{\tt merge}}
+The {\tt merge} function combines two {\tt ridata} objections by
+taking the union of their trials, so long as {\tt ny,nu} and {\tt nx}
+are the same for both. Usage:
+\begin{verbatim}
+dmerged = merge(d1,d2);
+\end{verbatim}
+where {\tt d1} and {\tt d2} are {\tt ridata} objects.
+
+\subsubsection{{\tt trials}}
+The {\tt trials} function returns an {\tt ridata} with only the
+specified trials of the original {\tt ridata}.
+\begin{verbatim}
+dsub = trials(dorig,trialnos);
+\end{verbatim}
+The argument {\tt dorig} is an {\tt ridata}.  The {\tt trialnos} must
+be an array of positive integers less than {\tt
+  dorig.M}.  The result, {\tt dsub}, is an {\tt ridata} with {\tt
+  length(trialnos)} trials corresponding in the indicies in {\tt
+  trialnos}.  They will be listed in the order {\tt trialnos(:)}.
+
+\subsubsection{{\tt select}}
+The {\tt select} function allows the user to specify a subset of points
+across all trials to form a new {\tt ridata}.  Each data-point is
+placed in a separate trial of length {\tt 1}.
+
+\begin{verbatim}
+dsel = select(d,sel);
+\end{verbatim}
+
+Here {\tt d} is an {\tt ridat} and {\tt sel} is an array of indicies
+between {\tt 1} and {\tt d.D}.  The result {\tt dsel} is an {\tt
+  ridata} with {\tt length(sel)} trials each containing a single
+data-point corresponding to the index in {\tt sel}.
+
+
+\subsubsection{{\tt unf\_select}}
+The {\tt unf\_select} function returns a fixed number of samples taken from
+all trials based on a uniform data-space coverage strategy.
+
+\begin{verbatim}
+dsampled = unf_select(d,K);
+dsampled = unf_select(d,K,dist);
+\end{verbatim}
+
+Here {\tt d} is an {\tt ridata} and {\tt K} is a positive integer.
+The resulding {\tt ridata}, {\tt dsampled}, will have {\tt K} trials
+of duration 1. 
+
+ The argument {\tt dist} is a {\it distance function}.
+ This should be a function of two arguments, say {\tt x} and {\tt A}.
+ {\tt x} is a column vector of the form {\tt [ y ; u]} if states have
+ not been specified and {\tt [y ; u ; x ; v]} if they have.  The
+ matrix {\tt A} has columns which are drawn from the same space as
+ {\tt x}.  The function should return a row vector which is the
+ distance from {\tt x} to each column of {\tt A}.
+
+ The default {\tt dist} is the squared $\ell_2$ norm, normalized by
+ the standard deviation of each coordinate of each element.
+ 
+ In general {\tt unf\_select} should be applied {\it after}
+states have been determined (see Section \ref{states}).
+
+\subsection{Generating State Estimates}
+\label{states}
+There are several methods in the toolbox for providing estimates of
+the latent state of system.  Most of these are simply linear
+projections of past input-output history.  
+
+% Many of these methods will also augment the inputs to include
+% projectiosn of past inputs. To suppress this behavior, use set:
+% \begin{verbatim}
+% options.extend_inputs = 0
+% \end{verbatim}
+
+For CT models, estimating the derivative of a system presents another
+challenge.  In general, numerical differentiation is too noisy.
+Several smoothing algorithms are provided for easing this task.  To
+specify a smoothing algorithm, there is an options data structure.
+
+\begin{verbatim}
+options.numerical_diff = '...';
+options.numerical_diff_arguments = {};
+\end{verbatim}
+
+
+\subsubsection{Time Delay Embedding}
+The simplest state estimate for discrete time systems is the
+``time-delay'' embedding, that is taking the last $k$ samples of the
+output to be the state.
+\begin{verbatim}
+[dnew,g] = states(d,'time-delay',ky);
+[dnew,g] = states(d,'time-delay',ky,options);
+[dnew,g] = states(d,'time-delay',ky,ku,options);
+\end{verbatim}
+Here {\tt d} is an {\tt ridata} object without states.
+The state of the system becomes:
+$$ x(t) = \begin{bmatrix} y(t) \\ y(t-1) \\ \vdots \\ y(t-{\tt ky})\end{bmatrix}$$
+The default is {\tt ky == 0}.  The input becomes:
+$$ u(t) = \begin{bmatrix} u(t+1) \\ u(t) \\ \vdots \\ u(t-{\tt ku})\end{bmatrix}$$
+The default {\tt ku == 0}.  If the {\tt options.feedthrough == 0} then
+the $u(t+1)$ term is not included.
+Necessarily this operation reduces the
+length of the trials in {\tt ridata}.
+
+The returned value {\tt dnew} includes the states and potentially
+augmented inputs.  The variable {\tt g} is a function such that:
+$${\tt all(dnew.Y(:,i) == g(dnew.X(:,i),dnew.U(:,i))}),$$
+i.e. {\tt g} is the known function
+mapping state to output.
+
+\subsubsection{Linear Filter Bank}
+\label{linear-filter}
+For both CT and DT one can use a linear filter bank to approximate states:
+\begin{verbatim}
+dnew = states(d,'linear-filter',G,muY);
+dnew = states(d,'linear-filter',G,muY,H,muU);
+dnew = states(d,'linear-filter',...,options);
+\end{verbatim}
+ Here {\tt G} and {\tt H} are transfer function objects.
+ The output of {\tt G} will be the states and the output of {\tt H}
+ will be the new inputs.    The filter {\tt G} will be applied to the
+ elements of $y(t) - {\tt muY}$ trial-by-trial.  Similarly, {\tt H}
+ will be applied to $u(t) - {\tt muU}$.
+% If {\tt H} is not specified, {\tt G} is single-input, and {\tt
+%   options.extend\_inputs ~= 0} then the default will be {\tt H = G}.
+% Otherwise {\tt H = eye(d.nu)} by default.
+ 
+ In general, to calculate the updates each trial will be shortened by
+ one sample.
+
+ If {\tt G} (resp. {\tt H}) is single-input it will be applied to each
+ output (resp. input) in turn.  Otherwise, {\tt G} must have {\tt d.ny}
+ inputs and {\tt H} must have {\tt d.nu} inputs.  
+
+% Further, {\tt G} and {\tt H} must be in the same time-domain, and this
+% will determine {\tt dnew.dT}.
+
+
+
+
+\subsubsection{Orthogonal Filter Bank}
+For both CT and DT one can use a linear filter bank to approximate states:
+\begin{verbatim}
+[dnew,g] = states(d,'orth-filter',domain,Gpoles);
+[dnew,g] = states(d,'orth-filter',domain,Gpoles,muY);
+[dnew,g] = states(d,'orth-filter',domain,Gpoles,muY,Hpoles);
+[dnew,g] = states(d,'orth-filter',domain,Gpoles,muY,Hpoles,muU);
+[dnew,g] = states(d,'orth-filter',...,options);
+\end{verbatim}
+Here {\tt domain} is one of  the strings {\tt 'CT'} or {\tt 'DT'}.
+The argument {\tt Gpoles} is a list of poles (be sure they are stable
+for the appropriate time domain!).  These poles are used to generate
+a filter with appropriately orthogonal impulse responses in the
+frequency domain. Here {\tt muY} is a
+mean to be subtracted off of the output data (default {\tt 0}).
+Similarly, {\tt Hpoles} and {\tt muU} are used to construct a filter
+for augmenting the inputs.  If unspecified, the input is not
+augmented.
+
+The {\tt options} structure has the same interpretation as in Section
+\ref{linear-filter}.
+
+The output {\tt dnew} is the new {\tt ridata} and the variable {\tt g} is
+a function such that:
+$${\tt all(dnew.Y(:,i) == g(dnew.X(:,i),dnew.U(:,i))}),$$
+i.e. {\tt g} is the known function
+mapping state to output.
+
+ 
+ \section{{\tt rimodel}}
+When first instantiated, an {\tt rimodel} provides facilities for
+selecting a model structure, solving for an optimized fit and then
+validating and simulating the models response to inputs.
+
+\subsection{Functions for Undetermined {\tt rimodel}}
+\subsubsection{{\tt optimize}}
+After an appropriate objective has been defined, {\tt optimize}
+determines the optimal model parameters.
+\begin{verbatim}
+mdet = optimize(mundet);
+\end{verbatim}
+Here {\tt mundet} is an undetermined model and {\tt mdet} is the model
+determined as the optimal solution.
+\subsection{Functions for Determined {\tt rimodel}}
+\subsubsection{{\tt simulate}}
+The function {\tt simulate} determines the response to an input:
+\begin{verbatim}
+[ts,ys,xs] = simulate(model,u,tspan,x0);
+\end{verbatim}
+The simulation function returns {\tt ts}, a vector of $1 \times N$
+ascending time-steps, {\tt ys}, a matrix of ${\tt ny} \times N$ output
+samples, and {\tt xs}, a matrix of ${\tt nx} \times N$ state samples.  
+
+The argument {\tt model} is a determined model.  The argument {\tt u}
+is the input.  This is a function from a scalar $t$, with ${\tt
+  tspan}(1) \leq t \leq {\tt tspan(end)}$, to vectors of size $1
+\times {\tt nu}$ for CT models and an ${\tt nu} \times N$ array for DT
+models.
+
+The argument {\tt tspan} is either a $1 \times 2$ ascending array of
+time-steps for CT models, or a $1 \times N$ array.  For the former,
+the values returned will be at the time-steps specified by the
+variable step integrator.  For the latter the values returned will be
+the response at the specified elements of {\tt tspan}.
+For DT models, the values returned will always be for incrementing time-steps.
+
+Finally, {\tt x0} is the ${\tt nx} \times 1$ initial condition vector.
+
+\subsubsection{{\tt validate}}
+The function {\tt validate} simulates the model on the input and
+initial conditions for a set of trials.
+\begin{verbatim}
+valdata = validate(model,data);
+valdata = validate(model,data,options);
+\end{verbatim}
+Here {\tt data} is an {\tt ridata} of {\tt M} trials.  The dimension
+of the input output and state must match that of the model.  For each
+trial, the response of the model to the identical input and initial
+condition is computed.  These trials are stored sequentially in {\tt
+  valdata}.
+A common use case is to separate training and validation data sets
+using the {\tt trials} function of {\tt ridata}.
+
+The options structure supports plotting options. If {\tt options.plot
+  == 1} then a separate figure for each trial is plotted containg
+several relevant comparisons of the results.
+
+\subsection{{\tt ripmodel} | Implicit Polynomial Models}
+For continuous time (CT) data the {\tt ripmodel}  fits models of the form:
+$$ \frac{d}{dt}e(x(t)) = f(x(t),u(t)), \qquad y(t) = g(x(t),u(t))$$
+and in the discrete time (DT) case:
+$$ e(x(t+1)) = f(x(t),u(t)), \qquad y(t) = g(x(t),u(t)),$$
+where $e: \RR^{n_x} \mapsto \RR^{n_x}$, $f: \RR^{n_x} \times
+\RR^{n_u}\mapsto \RR^{n_x}$ and $g: \RR^{n_x} \times \RR^{n_u}\mapsto
+\RR^{n_y}$ are polynomials or rational functions with fixed
+denominators.  For the models to be well posed, the Jacobian of
+$e(\cdot)$ must be invertible in the CT case, and the function
+$e(\cdot)$ must be invertible in the DT case.
+
+The {\tt ripmodel} can be constructed as follows:
+\begin{verbatim}
+m = ripmodel(data,edeg,fdeg,gdeg);
+m = ripmodel(data,edeg,fdeg,gdeg,options);
+m = ripmodel(data,edeg,fdeg,gfun);
+m = ripmodel(data,edeg,fdeg,gfun,options);
+\end{verbatim}
+The first argument, {\tt data}, informs the model of the domain (CT
+vs. DT) and dimensions of the problem.  Further, these data-points are
+used to decide on an appropriate rescaling of the input-output and
+state domains for numerical accuracy.  {\it This data should cover the
+regions over which you plan to model the dynamics.}
+
+The argument {\tt edeg} is a positive integer, indicating the maximum
+total degree of $e(x)$ as a polynomial in $x \in \RR^{n_x}$.  For
+$f(x,u)$ and $g(x,u)$ two numbers must be specified as the degrees for
+$x$ and $u$.  Thus {\tt fdeg} and {\tt gdeg} should each be a two
+integer array.  Optionally, $g(x,u)$ can be fixed by passing a
+function, {\tt gfun}, of two arguments.  Only a limited set of
+operations are supported inside this function (simple arithmetic etc).
+
+To enable fixed deonominator rational models, set {\tt
+  options.rational = 1}.  This option will only work when
+the degree of $e(x)$ and $f(x,u)$ in $x$ are specified to be odd.
+This is most useful for restricting continuous time models to disallow
+finite escape, and to enable global stability requirements.
+
+To require global stability, set {\tt options.globally\_stable = 1}.
+
+\subsubsection{{\tt rie\_bound}}
+\subsubsection{{\tt rie\_obj}}
+The {\tt rie\_obj} method adds a local Robust Identification Error objective to the
+objective function:
+\begin{verbatim}
+mnew = rie_obj(m,data);
+mnew = rie_obj(m,data,w);
+\end{verbatim}
+Here {\tt m} is an {\tt ripmodel} and {\tt data} is an {\tt ridata}
+object.  The returned model {\tt mnew} will have an objective
+augmented as described below. 
+The local RIE objective at each data-point is  weighted by {\tt w} which is  $1 \times {\tt
+  data.D}$.  The default weight is $1$.
+\subsubsection{{\tt lse\_obj}}
+The {\tt lse\_obj} method adds a least-squares minimization to the
+objective function.  This really should only be used in conjunction
+with more sophisticated objectives and constraints offered by the
+toolbox.  This is currently a {\it very} slow way to solve LS problems
+(recasting them as a SOCP):
+\begin{verbatim}
+mnew = lse_obj(m,data);
+mnew = lse_obj(m,data,w);
+\end{verbatim}
+Here {\tt m} is an {\tt ripmodel} and {\tt data} is an {\tt ridata}
+object.  The returned model {\tt mnew} will have an objective
+augmented as described below.  {\tt w} is a $1 \times {\tt data.D}$
+array of weights which default to $1$.
+
+
+   For DT models, the following term is added to the objective:
+$$ \sqrt{\sum_{i=1}^{D} {\tt w}(i)\| e(v_i) - f(x_i,u_i) \|^2}$$
+and for CT models, the following:
+$$ \sqrt{\sum_{i=1}^{D} {\tt w}(i)\left\| \frac{\partial e}{\partial x}(x_i)v_i -
+  f(x_i,u_i) \right\|^2}.$$
+where $(v_i,x_i,u_i)$ are the corresponding samples in {\tt ridata}.
+For both domains, if the output map is not fixed, the following will
+be added to the objective:
+$$\sqrt{\sum_{i=1}^{D} {\tt w}(i)\| y_i - g(x_i,u_i) \|^2},$$
+where again $(y_i,u_i)$ are from the samples in {\tt ridata}.
+
+
+
+As an example:
+\begin{verbatim}
+mnew = lse_obj(m,select(data,1000));
+\end{verbatim}
+would select $1000$ data points from {\tt data} and 
+
+\section{Thanks}
+
+This work is  supported by National Science Foundation Grant
+No. 0835947 and the Los Alamos ISAMI program.
+
+\begin{thebibliography}{9}
+
+\bibitem{lamport94}
+  Mark M. Tobenkin, I. R. Manchester, J. Wang, A. Megretski and R. TEdrake.
+  \emph{Convex Optimization Approaches to Nonlinear System Identification.}.
+  arXiv:1009.1670v1.
+\end{thebibliography}
+
+
+
+\end{document}
