@@ -22,6 +22,10 @@ function p=msspoly(x,y,z)
 % AM 09.01.09
 
 superiorto('double')
+if (exist('TrigPoly'))% note: this is gross, but the only work-around short of converting this to the new class style (>= matlab v7.6)
+  inferiorto('TrigPoly')  
+end
+
 switch nargin,
     case 0,
         m=0; 
