@@ -21,13 +21,17 @@ s=zeros(1,size(s1,2));          % to start s for p
 q1=mss_match(pp,s1(:,1)+m1*(s1(:,2)-1));
 s1=s1(q1>0,:);
 q1=q1(q1>0);
-s1(:,1:2)=[ip(q1) jp(q1)];
-s=[s;s1];
+if (~isempty(s1))
+  s1(:,1:2)=[ip(q1) jp(q1)];
+  s=[s;s1];
+end
 
 q2=mss_match(-pp,s2(:,1)+m2*(s2(:,2)-1));
 s2=s2(q2>0,:);
 q2=q2(q2>0);
-s2(:,1:2)=[ip(q2) jp(q2)];
-s=[s;s2];
+if (~isempty(s2))
+  s2(:,1:2)=[ip(q2) jp(q2)];
+  s=[s;s2];
+end
 
 p=msspoly(m,n,s);
