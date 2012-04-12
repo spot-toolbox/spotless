@@ -19,8 +19,11 @@ end
 %save sedumibug4 a b c k
 %stop('stop before sedumi')
 
+s=warning;  % save warning state before calling sedumi (sedumi 1.3 turns off all warnings!)
 [x,y,info]=sedumi(A,B,optimize*C,K,pars);
 %[x,y,info]=sedumi(a,b,c,k,pars); x=s*x;
+warning(s);  % restore warning state 
+
 if fl~=0,
     toc
 end
