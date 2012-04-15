@@ -1,6 +1,5 @@
 function p=plus(p1,p2)
 %
-
 % AM 09.01.09
 
 p1=mtpoly(p1);
