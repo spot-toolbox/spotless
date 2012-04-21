@@ -4,7 +4,7 @@ potdir=pwd;
 n=length(potdir);
 s=potdir(n-4);                    % slash character
 if ~strcmp('spot',potdir(n-3:n))||((s~='\')&&(s~='/')), 
-    error('Please install SPOT in a "spot" directory!')
+    %    error('Please install SPOT in a "spot" directory!')
 end
 fprintf('\n Installing SPOT in %s:\n updating the path...',potdir)
 addpath(potdir);
