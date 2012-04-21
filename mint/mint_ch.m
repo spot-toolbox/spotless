@@ -10,6 +10,7 @@ if nargin<2, a=1; end
 if ~mint_isint(a), error('2nd input is not a double integer'); end
 if ~isscalar(a), error('2nd input is not a scalar'); end
 if a==0, error('2nd input is zero'); end
+x = full(x);
 [m,n]=size(x);    
 z=[repmat(1,m,1) x];
 if rank(z)==n+1,            % non-singular case
