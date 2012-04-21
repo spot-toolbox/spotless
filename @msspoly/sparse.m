@@ -6,11 +6,25 @@ function P=sparse(p)
 
 % AM 11.01.09
 
-if isempty(p.s), P=sparse([],[],[],0,p.n); return; end
-[ms,ns]=size(p.s);
-if ms==1, P=sparse(1,p.s(1,2),p.s(1,ns),1,p.n); return; end
-[ss,ii]=sortrows([p.s(:,1) p.s(:,3:ns-1)]);
-jj=p.s(ii,2);
-cc=p.s(ii,ns);
-ee=cumsum([1;1-all(ss(1:ms-1,:)==ss(2:ms,:),2)]);
-P=sparse(ee,jj,cc,ee(length(ee)),p.n);
+if isempty(p.coeff)
+    P = sparse([],[],[],0,p.dim(2));
+elseif size(p.coeff,1) == 1
+    P=sparse(1,p.sub(1,2),p.coeff(1),1,p.dim(2));
+else
+    [s,i] = sortrows([p.sub(:,1) p.var p.pow]);
+    j = p.sub(i,2);
+    coeff = p.coeff(i);
+    m = size(p.sub,1);
+    row = cumsum([1;1-all(s(1:m-1,:)==s(2:m,:),2)]);
+    P = sparse(row,j,coeff,row(end),p.dim(2));
+end
+    
+
+% if isempty(p.s), P=sparse([],[],[],0,p.n); return; end
+% [ms,ns]=size(p.s);
+% if ms==1, P=sparse(1,p.s(1,2),p.s(1,ns),1,p.n); return; end
+% [ss,ii]=sortrows([p.s(:,1) p.s(:,3:ns-1)]);
+% jj=p.s(ii,2);
+% cc=p.s(ii,ns);
+% ee=cumsum([1;1-all(ss(1:ms-1,:)==ss(2:ms,:),2)]);
+% P=sparse(ee,jj,cc,ee(length(ee)),p.n);
