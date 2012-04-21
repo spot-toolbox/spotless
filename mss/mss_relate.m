@@ -5,6 +5,7 @@ function ik=mss_relate(x,y)
 % stores all pairs (i,k) such that x(i)=y(k)
 % works on data convertible to "double"
 
+
 x=double(x);
 y=double(y);
 x=x(:);

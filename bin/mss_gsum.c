@@ -22,7 +22,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
   if(nrhs!=1) 
       mexErrMsgTxt("exactly one input required");
   if( !mxIsDouble(prhs[0]) || mxIsComplex(prhs[0]) ) 
-      mexErrMsgTxt("input must be a noncomplex double");
+      mexErrMsgTxt("input must be a double");
   m = mxGetM(prhs[0]);
   n = mxGetN(prhs[0]);
   if(m*n==0)
