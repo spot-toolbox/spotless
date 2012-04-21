@@ -1,21 +1,25 @@
 function q=indexinto(p,varargin)
-    sp=p.s;
-    mp=p.m;
-    np=p.n;
-    sp(:,1)=sp(:,1)+mp*(sp(:,2)-1);    % essentially, p(:)
-    Np=mp*np;
-    pp=1:Np;
-    P=reshape(pp,mp,np);
-    Q=subsref(P,struct('type','()','subs',{varargin}));
-    if isempty(Q),
-        q = mtpoly(0,0,[]); return;
-    end    
-    [mq,nq]=size(Q);
+% Grab linear indices corresponding to this subsref.
+    pp = 1:prod(p.dim);
+
+    Q=subsref(reshape(pp,p.dim),struct('type','()','subs',{varargin}));
+
     qq=Q(:);
-    iq=repmat((1:mq)',1,nq); iq=iq(:);
-    jq=repmat(1:nq,mq,1); jq=jq(:);
-    ik=mss_relate(qq,sp(:,1));
-    sq=sp(ik(:,2),:);
-    sq(:,1:2)=[iq(ik(:,1)) jq(ik(:,1))];
-    q=mtpoly(mq,nq,sq);
+    % subscripts for the values which come form this matrix.
+    [qi,qj] = ind2sub(size(Q),1:length(qq));
+    
+    pind = sub2ind(p.dim,p.sub(:,1),p.sub(:,2));
+    
+    if isempty(pind)
+        q = msspoly.zeros(size(Q));
+    else
+        
+        rel = msspoly.relate(qq,pind); % all pairs (i,k) s.t. qq(i) = pind(k)
+        
+        q = msspoly(size(Q),...
+                   [reshape(qi(rel(:,1)),[],1) reshape(qj(rel(:,1)),[],1)],...
+                   p.var(rel(:,2),:),...
+                   p.pow(rel(:,2),:),...
+                   p.coeff(rel(:,2),:));
+    end
 end

@@ -1,9 +1,9 @@
 % Slow Variable Substitution
 % q = subss(p,x,r)
 %
-% p -- p(x,...) a mtpoly
-% x -- n-by-1 free mtpoly
-% r -- n-by-1 mtpoly
+% p -- p(x,...) a msspoly
+% x -- n-by-1 free msspoly
+% r -- n-by-1 msspoly
 %
 % Returns
 % q -- p(r,...)
@@ -12,8 +12,8 @@ function q = subss(p,x,r)
     if size(x,1) ~= size(r,1), 
         error(['2nd and 3rd argument do not agree.']); 
     end
-    r = mtpoly(r);
-    anon = mtpoly('#',length(x));
+    r = msspoly(r);
+    anon = msspoly('#',length(x));
     p = subs(p,x,anon);
     x = anon;
     if length(x) > 1

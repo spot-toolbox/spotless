@@ -1,28 +1,38 @@
-function [b,x]=issimple(p)
-% function [b,x]=issimple(p)
+function [s,x]=issimple(p)
 %
-% True when p is non-empty column of mtpoly variables and constants,  
-% then x(:,1) contains variable id numbers (0 for constants),
-% x(:,2) is the vector of values (1 for variables), otherwise x=[].
-
-% AM 09.01.09
-
-x=[]; b=0;
-s=p.s;
-[ms,ns]=size(s);
-[m,n]=size(p);
-if (n~=1)||(m==0), return; end    % must be non-empty column vector
-c=double(p);
-if isa(c,'double'),               % all column constants acceptable
-    b=1; x=[zeros(m,1) c]; return; 
-end
-if ns~=5, return; end             % otherwise need one variable per term
-bb=((s(:,3)==0)&(s(:,4)==0))|((s(:,4)==1)&(s(:,5)==1));
-if ~all(bb), return; end          % not only constants and variables
-if ms==1,                         % a scalar variable
-    b=1; x=[s(1,3) 1];
-end
-if all(s(1:ms-1,1)<s(2:ms,1)),    % all terms in different entries
-    b=1; x=zeros(n,2); 
-    x(s(:,1),:)=[s(:,3) s(:,5)];
+%
+%  [s,x] = issimple(p)
+%
+%  s -- 1 when p is a k-by-1 msspoly of constants and
+%       variables. 0 otherwise.
+%
+%  x -- k-by-2 double array
+%       x(:,1) are the variable ID numbers (0 for constant).
+%       x(:,2) is the vector of values (1 for variables).
+%
+%
+x = [];
+if ~isa(p,'msspoly') || isempty(p) || size(p,2) ~= 1
+    s = 0;
+else
+    ind = sub2ind(p.dim,p.sub(:,1),p.sub(:,2));
+    if length(unique(ind)) ~= length(ind)
+        s = 0;
+    else
+        if isempty(p.var), msk = logical(zeros(size(p.coeff))); 
+        else
+            msk = p.var ~= 0; 
+        end
+        
+        if size(p.var,2) ~= 1 || ...
+                ~all(p.pow <= 1) ||...
+                ~all(p.coeff(msk) == 1)
+            s = 0;
+        else
+            x = zeros(size(p,1),2);
+            x(ind(msk),1) = p.var(msk);
+            x(ind(~msk),2) = p.coeff(~msk);
+            s = 1;
+        end
+    end
 end

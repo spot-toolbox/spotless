@@ -5,7 +5,7 @@ function U=mono(p)
 
 [x,d]=decomp(p);
 if isempty(x),
-    U=mtpoly(1);
+    U=msspoly(1);
 else
     U=recomp(x,d);
 end

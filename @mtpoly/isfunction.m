@@ -1,12 +1,23 @@
 function f=isfunction(p,x)
 % function f=isfunction(p,x)
 %
-% true if p is a function of free mss polynomial x
+% p -- msspoly
+% x -- free msspoly
+%
+% f -- 1 if p depends on x and x alone.
+%      0 otherwise.
 
-if nargin<2, error('2 inputs required'); end
-if ~isa(x,'mtpoly'), error('2nd input not an mss polynomial'); end
-[b,xn]=isfree(x);
-if ~b, error('2nd input not free'); end
-k=(size(p.s,2)-3)/2;
-ee=mss_match([xn(:);0],p.s(:,3:2+k));
-f=all(ee(:)>0);
+
+if nargin < 2, error('Two inputs required.'); end
+
+[f,xn] = msspoly.isfreemsspoly(x);
+
+if ~f
+    error('Second argument must be a free msspoly.');
+end
+
+dep = msspoly.match_list([xn(:);0],p.var);
+
+f = full(all(dep(:) > 0));
+
+end

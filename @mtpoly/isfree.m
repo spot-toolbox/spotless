@@ -1,36 +1,37 @@
 function [b,xn]=isfree(p)
-% function [b,xn]=isfree(p)
+% [b,xn]=isfree(p)
 %
-% true when p is non-empty mtpoly matrix,
-% entries of which are different independent variables, 
-% then xn is the matrix of variable id numbers, otherwise xn=[]
+% Returns b=1 if p is an msspoly whose entries are each unique
+%           variables to the power 1 with coefficient 1.
+%
+%         if b = 1, xn is the matrix of variable ids in the order
+%         they appear in p(:).
+%
+xn = [];
 
-% AM 09.01.09
 
-s=p.s;
-b=0; xn=[];
-[ms,ns]=size(s);
-[m,n]=size(p);
-if (n==0)||(m==0)||(ms==0),       % must be non-empty column vector 
-    return; 
-end     
-if ns~=5, return; end             % need one variable per term
-if (m*n~=ms),                     % need exactly one term per matrix entry
+if ~isa(p,'msspoly'), 
+    b = 0;
     return;
 end
-if any(s(:,4)~=1)||any(s(:,5)~=1),% all terms degree 1, coefficient 1
-    return; 
-end
 
-if ms==1,                           % the case of a scalar variable
-    b=1; xn=s(1,3); return; 
+if isempty(p), b = 1;
+elseif size(p.pow,1) == 0, b = 0;      % empty matrix not free.
+elseif size(p.pow,2) ~= 1, b = 0; % more than one power.
+elseif any(p.pow ~= 1), b = 0;    % powers other than one.
+elseif all(p.dim == [1 1])          % scalar case
+    b = 1;
+    xn = p.var(1);
+else
+    if size(p.pow,1) ~= prod(p.dim) % some zero variables.
+        b = 0;
+    elseif any(p.var == 0)          % some constant terms.
+        b = 0;
+    elseif length(p.var) ~= length(unique(p.var))
+        b = 0;
+    else
+        b = 1;
+        xn = zeros(p.dim);
+        xn(sub2ind(p.dim,p.sub(:,1),p.sub(:,2))) = p.var;
+    end
 end
-e=sort(s(:,3));
-if any(e(1:ms-1)==e(2:ms)),         % a different variable for each term
-    return; 
-end
-xn=zeros(m*n,1);
-xn(s(:,1)+m*(s(:,2)-1))=s(:,3);
-if any(xn==0), xn=[]; return; end
-b=1;
-xn=reshape(xn,m,n);

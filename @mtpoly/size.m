@@ -1,23 +1,13 @@
 function [x,y]=size(p,n)
-% function [x,y]=size(p,n)
-
-% AM 09.01.09
-
-if nargin<2,
-    if nargout==2,
-        x=p.m;
-        y=p.n;
+if nargin == 1
+    if nargout == 2
+        x = p.dim(1);
+        y = p.dim(2);
     else
-        x=[p.m p.n];
-        y=[];
+        x = p.dim;
     end
 else
-    switch n,
-        case 1,
-            x=p.m;
-        case 2,
-            x=p.n;
-        otherwise
-            error('option not supported')
-    end
+    x = p.dim(n);
+end
+
 end

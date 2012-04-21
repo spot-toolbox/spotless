@@ -5,7 +5,7 @@ function U=mono_root(p)
 
 [x,d]=decomp(p);
 if isempty(x),
-    U=mtpoly(1);
+    U=msspoly(1);
 else
     d=mint_ch(mint_down(d),2);
     U=recomp(x,d);
