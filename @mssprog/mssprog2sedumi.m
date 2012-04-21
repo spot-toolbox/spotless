@@ -9,15 +9,15 @@ if mv<1, error('this mss program has no decision variables'); end
 if nargin<2, error('2 inputs required'); end
 if ~isa(f,'msspoly'), error('2nd input not an mss polynomial'); end
 if ~isequal(size(f),[1 1]), error('2nd argument not 1-by-1'); end
-c=linear(f,p.v);
-if ischar(c), error('2nd input not linear in decision variables'); end
+[l,c]=linear(f,p.v);
+if ~l, error('2nd input not linear in decision variables'); end
 if deg(c)>0, error('2nd input not a function of decision variables'); end
 c=double(c(2:mv+1));
 if all(c(:)==0),
     error('2nd argument is a constant');
 end
-e=linear(p.e,p.v);
-if ischar(e), 
+[l,e]=linear(p.e,p.v);
+if ~l
     error('equality constraints not linear in decision variables'); 
 end
 BA=sparse(e);
