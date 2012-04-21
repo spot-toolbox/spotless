@@ -1,12 +1,22 @@
-function x=double(p)
-% function x=double(p)
+function [x,err]=double(p)
+% x = double(p);
 %
-% x='?' unless p is constant
-
-% AM 09.01.09
-
-if size(p.s,2)==3,
-    x=accumarray([p.s(:,1),p.s(:,2)],p.s(:,3),[p.m,p.n]);
+% p -- an msspoly
+%
+% Throws an error if p is not a constant matrix, o.w. x is 
+% the corresponding matrix.
+%
+% [x,err] = double(p);
+%
+% Instead of throwing an error the flag err == 1 if p is not
+% a constant matrix.
+if size(p.var,2) == 0
+    x=accumarray(p.sub,p.coeff,p.dim);
 else
-    x='?';
+    if nargout == 2
+        err = 1;
+        x = [];
+    else
+        error('Cannot cast non-constant msspoly to double.');
+    end
 end

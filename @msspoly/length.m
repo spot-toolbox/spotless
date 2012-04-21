@@ -1,8 +1,7 @@
 function y=length(p)
-% function y=length(p)
-%
-% total number of elements in p
-
-% AM 10.01.09
-
-y=p.n*p.m;
+if min(size(p)) == 0,
+    y = 0;
+else
+    y = max(size(p));
+end
+end

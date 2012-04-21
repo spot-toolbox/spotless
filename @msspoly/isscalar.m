@@ -1,3 +1,3 @@
-function y=isscalar(f)
-
-y=(f.n==1)&&(f.m==1);
+function y=isscalar(p)
+y = msspoly.hasSize(p,[1 1]);
+end

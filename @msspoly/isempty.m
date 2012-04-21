@@ -1,3 +1,3 @@
 function y=isempty(p)
-
-y=((p.n*p.m)==0);
+y = prod(p.dim) == 0;
+end

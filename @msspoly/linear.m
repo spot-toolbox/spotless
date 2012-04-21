@@ -1,22 +1,55 @@
-function q=linear(p,x)
-% function q=linear(p,x)
+function [o1,o2]=linear(p,x)
 %
-% q='?' if column p is not linear with respect to free mss vector x, 
-% otherwise p(y,x)=q(y)*[1;x]
+%   q=linear(p,x)
+%
+%   p -- A k-by-1 msspoly.
+%   x -- A n-by-1 free msspoly.
+%
+%  Throws an error if p is not affine in x, otherwise returns
+%  q -- A k-by-(n+1) msspoly such that q*[1;x] == p.
+%
+%
+%  [l,q]=linear(p,x)
+%
+%  Same as above except l = 1 if p is affine in x and l = 0, q = [] if
+%  p is not affine in x (no errors thrown).
 
-[mp,np]=size(p);
-if np~=1, error('1st argument must be a column vector'); end
-if ~isa(x,'msspoly'), error('2nd argument must be an mss polynomial'); end
-[f,xn]=isfree(x);
-nx=length(xn);
-if ~f, error('2nd argument must be a free mss polynomial'); end
-if size(xn,2)~=1, error('input 2 must be a column'); end
-if deg(p)<1, q=[p zeros(mp,nx)]; return; end
-[ms,ns]=size(p.s);
-k=round((ns-3)/2);
-vs=p.s(:,3:2+k);
-ds=p.s(:,3+k:2+2*k);
-ee=mss_match(xn,vs);
-if any(ds(ee>0)>1), q='?'; return; end
-s=[p.s(:,1) 1+max(ee,[],2) vs.*(ee==0) ds p.s(:,ns)];
-q=msspoly(mp,nx+1,s);
+if isa(p,'double'), p = msspoly(p); end
+
+if ~isa(p,'msspoly') || (~isempty(p) && size(p,2) ~= 1)
+    error('First argument must be a k-by-1 msspoly');
+end
+k = size(p,1);
+
+[f,xn] = msspoly.isfreemsspoly(x);
+
+if ~f || size(x,2) ~= 1
+    error('Second argument must be a n-by-1 free msspoly');
+end
+n = size(x,1);
+
+if isempty(p) || isempty(x) || deg(p,x) == 0
+    l = 1;
+    q = [ p zeros(k,n) ];
+elseif deg(p,x) == 1
+    l = 1;
+    q = [ subs(p,x,0*x) diff(p,x) ];
+else
+    l = 0; q = [];
+end
+
+if nargout == 1
+    if ~l
+        error('First argument not affine in second argument.');
+    else
+        o1 = q;
+    end
+else
+    o1 = l; o2 = q;
+end
+
+
+end
+
+
+

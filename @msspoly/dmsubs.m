@@ -1,5 +1,9 @@
-function q=msubs(p,x,v)
-% function q=msubs(p,x,v)
+function q=dmsubs(p,x,v)
+% function q=dmsubs(p,x,v)
+%
+%
+% Data matrix substitution.
+%
 %
 % INPUTS:
 %   p  -  m-by-1 msspoly 
@@ -12,18 +16,24 @@ function q=msubs(p,x,v)
 % DESCRIPTION: q(:,i) is the result of substituting v(:,i) for x in p
 % p must be an msspoly in x alone.
 
-% mmt 3.24.11
-if nargin<3, error('three inputs required'); end
-if ~isa(x,'msspoly'), error('input 2 not a msspoly'); end
-[f,xn]=isfree(x);
-if ~f, error('input 2 is not free'); end
-if ~isa(v,'double'), error('input 3 not a double'); end
-if ~isreal(v), error('input 3 not real'); end
-[k,n]=size(v);
-if ~isequal(size(xn),[k 1]), error('inputs 2,3 not compatible'); end
-[m,np]=size(p);
-if np~=1, error('input 1 is not a column'); end
+if nargin < 3, error('Three arguments required.'); end
+if ~isa(p,'msspoly'), error('First argument must be an msspoly.'); end
 
+m = size(p,1);
+if size(p,2) ~= 1, error('First argument must be m-by-1.'); end
+
+[f,xn] = isfree(x);
+if ~f, error('Second argument must be free msspoly.'); end
+k = size(x,1);
+if size(x,2) ~= 1, error('Second argument must by k-by-1'); end
+
+if size(v,1) ~= k, 
+    error(['Second/Third arguments must have the same number of rows']);
+end
+
+if ~isa(v,'double'), error('Third argument must be a double.'); end
+    
+    
 [xd,pd,Md] = decomp(p);
 
 N = size(v,2);
@@ -48,8 +58,11 @@ pow = repmat(v(perm,:),po,1).^repmat(pd(:),1,N);
 sz = [po N];
 subs = repmat(1:prod(sz),n,1);
 
-mo = accumarray(subs(:),pow(:),[prod(sz) 1],@prod);
+mo = accumarray(subs(:),pow(:),[prod(sz) 1],@prod,[],true);
+
 q = Md*reshape(mo,sz);
+
+end
 
 
 

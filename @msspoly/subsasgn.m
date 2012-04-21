@@ -1,37 +1,126 @@
-function p=subsasgn(p1,s,p2)
+function q=subsasgn(p1,s,p2)
 %
+% TODO: Support logical indexing.
+%
+%
+errindextype = ['Subscript indices must either be real positive ' ...
+                'integers (logicals not currently supported).'];
 
-% AM 09.01.09
+    function tst = iscolon(arg)
+    tst = length(arg) == 1 && ...
+          isa(arg,'char') && ...
+          strmatch(arg,':');
+    end
 
-p1=msspoly(p1);                 % convert to msspoly, if necessary
-p2=msspoly(p2);
-[s1,s2]=mssp_align(p1.s,p2.s);  % make sure s1 and s2 have same width
-[m1,n1]=size(p1);
-[m2,n2]=size(p2);
-P1=reshape(1:(m1*n1),m1,n1);    % same size as p1, element numbers 
-P2=reshape(1:(m2*n2),m2,n2);    % same size as p2, element numbers 
-P=subsasgn(P1,s,-P2);           % same size as p, element numbers (+/-)
-[m,n]=size(P);
-pp=P(:);                        % p to p1/p2 reference
 
-ip=repmat((1:m)',1,n); ip=ip(:);% p element number to its row index
-jp=repmat(1:n,m,1); jp=jp(:);   % p element number to its column index
+switch s.type
+  case '()',
+    p1 = msspoly(p1);
+    p2 = msspoly(p2);
+    
+    % Case with ':'.
+    if iscolon(s.subs{1})
+        if msspoly.hasSize(p2,[1 1])
+            p2 = repmat(p2,size(p1));
+        elseif prod(size(p2)) ~= prod(size(p1))
+            error(['In an assignment  A(:) = B, the number of elements ' ...
+                   'in A and B must be the same.']);
+        end
+        q = reshape(p2,size(p1));
+        return;
 
-s=zeros(1,size(s1,2));          % to start s for p
-q1=mss_match(pp,s1(:,1)+m1*(s1(:,2)-1));
-s1=s1(q1>0,:);
-q1=q1(q1>0);
-if (~isempty(s1))
-  s1(:,1:2)=[ip(q1) jp(q1)];
-  s=[s;s1];
+    else
+        switch length(s.subs)
+          case 1,
+            p2 = indexinto(p2,':');
+            ind = s.subs{1};
+            ind = ind(:);
+            
+            if msspoly.hasSize(p2,[1 1])
+                p2 = repmat(p2,length(ind),1);
+            elseif length(p2) ~= length(ind)
+                error(['In an assignment  A(I) = B, the number of elements ' ...
+                       'in B and  I must be the same.']);
+            end            
+            
+            if ~msspoly.isIntGE(ind,1), 
+                error(errindextype);
+            end
+            
+            if any(ind(:) > prod(size(p1)))
+                error(['In an assignment  A(I) = B, a matrix A cannot ' ...
+                       'be resized.']);
+            end
+            
+            
+          case 2,
+            % We are given two subscript arrays.
+            % First lets normalize the subscript arrays.
+            if iscolon(s.subs{1}), is = (1:p1.dim(1))';
+            else, is = s.subs{1}(:); end
+            
+            if iscolon(s.subs{2}), js = (1:p1.dim(2))'; 
+            else, js = s.subs{2}(:); end
+            
+            if msspoly.hasSize(p2,[1 1])
+                p2 = repmat(p2,[length(is) length(js)]);
+            elseif ~msspoly.hasSize(p2,[length(is) length(js)])
+                error(['Subscripted assignment dimension ' ...
+                       'mismatch.']);
+            end
+            
+            if ~msspoly.isIntGE(is,1) || ~msspoly.isIntGE(js,1)
+                error(errindextype);
+            end
+            
+            if any(is > p1.dim(1)) || any(js > p1.dim(2))
+                error('Index exceeds matrix dimensions.');
+            end
+            
+            % Now we have a list of row/col subscripts.
+            % We want all pairs in order, one column at a time.
+            Js = repmat(js',length(is),1);  
+            Is = repmat(is,1,length(js));   
+
+            p2 = indexinto(p2,':');
+            ind = sub2ind(p1.dim,Is(:),Js(:));
+          otherwise,
+            error('Only two dimensional indexing supported.');
+        end
+        
+        % Last instance of an index to appear is the value to assign.
+        [I,uI] = unique(ind);
+        
+        if length(I) ~= length(ind)
+            p2    = indexinto(p2,uI);
+            ind   = I;
+        end
+        % At this point: p2 is k-by-1 msspoly and ind is k-by-1 unique
+        % indices.
+        p1ind = sub2ind(size(p1),p1.sub(:,1),p1.sub(:,2));
+        ik = msspoly.relate(p1ind,ind);
+
+        if ~isempty(ik)
+            p1 = p1.removeEntries(ik(:,1)); % Equivalent to zeroing
+                                                    % those entries.
+        end
+        
+        % Remove entries of ind which correspond to p2 == 0.
+        [i,j] = ind2sub(size(p1),ind);
+        ij = [ i j ];
+        
+        [var1,var2] = msspoly.padZeros(p1.var,p2.var);
+        [pow1,pow2] = msspoly.padZeros(p1.pow,p2.pow);
+
+        q = msspoly(p1.dim,...
+                   [ p1.sub ; ij(p2.sub(:,1),:) ],...
+                   [ var1 ; var2 ],...
+                   [ pow1 ; pow2 ],...
+                   [ p1.coeff ; p2.coeff ]);
+    end
+  otherwise
+    error('Unsuppported assignment type.');
 end
-
-q2=mss_match(-pp,s2(:,1)+m2*(s2(:,2)-1));
-s2=s2(q2>0,:);
-q2=q2(q2>0);
-if (~isempty(s2))
-  s2(:,1:2)=[ip(q2) jp(q2)];
-  s=[s;s2];
+    
+p = p1;
 end
-
-p=msspoly(m,n,s);

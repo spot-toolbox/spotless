@@ -1,20 +1,34 @@
-function q=repmat(p,m,n)
-%
+function q=repmat(p,rep,m)
 
-% AM 09.01.09
-
-[mp,np]=size(p);
-mq=m*mp;
-nq=n*np;
-if isempty(p.s),
-    q=msspoly(mq,nq,p.s);
-    return
+if nargin == 3
+    rep = [ rep m ];
 end
-[ms,ns]=size(p.s);
-s=repmat(p.s,m*n,1);
-s(:,1)=s(:,1)+kron((0:m-1)',repmat(mp,n*ms,1));
-s(:,2)=s(:,2)+repmat(kron((0:n-1)',repmat(np,ms,1)),m,1);
-q=msspoly(mq,nq,s);
 
+if ~msspoly.hasSize(rep,[1 2])
+    error('Repetition for exactly two dimensions must be given.');
+elseif ~msspoly.isIntGE(rep,1)
+    error('Arguments must be positive integers.');
+end
+
+sz  = p.dim;
+szq = rep.*sz;
+
+if size(p.coeff,1) == 0
+    q = msspoly.zeros(szq);
+else
+    E = size(p.coeff,1);
+    vs = repmat(p.var,  prod(rep),1);
+    ps = repmat(p.pow,  prod(rep),1);
+    cs = repmat(p.coeff,prod(rep),1);
+    ss = repmat(p.sub, prod(rep),1);
+    
+    ss(:,1) = ss(:,1) + kron((1:rep(1))'-1,repmat(p.dim(1),E*rep(2),1));
+    ss(:,2) = ss(:,2) + repmat(kron((0:rep(2)-1)',...
+                                    repmat(p.dim(2),E,1)),rep(1),1);
+
+    q = msspoly(szq,ss,vs,ps,cs);
+end
+
+end
 
 
