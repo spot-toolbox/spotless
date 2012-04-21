@@ -638,13 +638,13 @@ classdef (InferiorClasses = {?double}) msspoly
             x = ones(5,1);
             
             e = 'Test Failed (match): Single argument test failed.';
-            if ~msspoly.match(x), error(e); end
-            if ~msspoly.match(x'), error(e); end
-            if ~msspoly.match(x*x'), error(e); end
-            if ~msspoly.match(rand(1)*x'), error(e); end
-            if ~msspoly.match(rand(1)*x'), error(e); end
-            if msspoly.match(rand(5,1)*x'), error(e); end
-            if msspoly.match(x*rand(1,5)), error(e); end
+            if ~msspoly.match_list(x), error(e); end
+            if ~msspoly.match_list(x'), error(e); end
+            if ~msspoly.match_list(x*x'), error(e); end
+            if ~msspoly.match_list(rand(1)*x'), error(e); end
+            if ~msspoly.match_list(rand(1)*x'), error(e); end
+            if msspoly.match_list(rand(5,1)*x'), error(e); end
+            if msspoly.match_list(x*rand(1,5)), error(e); end
             
             e = 'Test Failed (match): Two argument test failed.';
             y = eye(10);
@@ -652,13 +652,13 @@ classdef (InferiorClasses = {?double}) msspoly
             
             j = find(x == 1);
             
-            z = msspoly.match(x,y);
+            z = msspoly.match_list(x,y);
             if any(diag(z) ~= j), error(e); end
             if diag(diag(z)) ~= diag(diag(j)), error(e); end
             
             y = repmat(10+(5:-1:1),10,1);
             x = 10+(1:10);
-            z = msspoly.match(x,y);
+            z = msspoly.match_list(x,y);
 
             if ~all(all(repmat(z(1,:),10,1) == z)), error(e); end
             if ~all(z(1,:) == 5:-1:1), error(e); end
