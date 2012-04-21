@@ -51,7 +51,7 @@ switch s.type
                 error(['In an assignment  A(I) = B, a matrix A cannot ' ...
                        'be resized.']);
             end
-            
+            dim = p1.dim;
             
           case 2,
             % We are given two subscript arrays.
@@ -76,7 +76,7 @@ switch s.type
             if any(is > p1.dim(1)) || any(js > p1.dim(2))
                 error('Index exceeds matrix dimensions.');
             end
-            
+
             % Now we have a list of row/col subscripts.
             % We want all pairs in order, one column at a time.
             Js = repmat(js',length(is),1);  
