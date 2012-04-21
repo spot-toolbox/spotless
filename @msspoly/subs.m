@@ -42,7 +42,7 @@ if s % b is simple.
     coeff = p.coeff;
 
     % Where b is a double, compute corresponding power and remove.
-    if ~isempty(cnsti)
+    if ~isempty(cnsti) && ~isempty(p.pow)
         term = msspoly.match_list(avar(cnsti),var);
         mul   = ones(size(p.pow));
 
