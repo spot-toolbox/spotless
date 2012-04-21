@@ -5,7 +5,7 @@ function p = test_randomPoly(n,dim,dens,int)
     if nargin < 4
         int = 1;
     end
-    x = mtpoly('x',n);
+    x = msspoly('x',n);
     [~,xn] = isfree(x);
     % Pick random points in the matrix.
     K = floor(prod(dim)*dens);
@@ -19,5 +19,5 @@ function p = test_randomPoly(n,dim,dens,int)
         coeff = randn(K,1);
     end
     
-    p = mtpoly(dim,sub,var,pow,coeff);
+    p = msspoly(dim,sub,var,pow,coeff);
 end
