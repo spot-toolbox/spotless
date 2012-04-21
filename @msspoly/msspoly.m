@@ -253,12 +253,25 @@ classdef (InferiorClasses = {?double}) msspoly
             else
                 ss='';
             end
+            if isempty(s), format = '%.5g';
+            else, format = '%.5g'; end
+            
+            if isreal(t(m))
+                coeff_str = sprintf(format,t(m));
+            elseif real(t(m)) == 0
+                coeff_str = sprintf([format 'i'],imag(t(m)));
+            else
+                coeff_str = sprintf(['(' format '+' format 'i)'],...
+                                    real(t(m)), ...
+                                    imag(t(m)));
+            end
+            
             if isempty(ss),
                 if isempty(s),
                     tm=t(m);
-                    s1=sprintf('%.5g',t(m));
+                    s1=coeff_str;
                 else
-                    s1=[s sprintf('%+.5g',t(m))];
+                    s1=[s '+' coeff_str];
                 end
             else
                 if t(m)==1,
@@ -275,9 +288,9 @@ classdef (InferiorClasses = {?double}) msspoly
                     end
                 else
                     if isempty(s),
-                        s1=[sprintf('%.5g',t(m)) '*' ss];
+                        s1=[coeff_str '*' ss];
                     else
-                        s1=[s sprintf('%+.5g',t(m)) '*' ss];
+                        s1=[s '+' coeff_str '*' ss];
                     end
                 end
             end
