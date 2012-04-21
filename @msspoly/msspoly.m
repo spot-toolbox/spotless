@@ -5,7 +5,7 @@ classdef (InferiorClasses = {?double}) msspoly
         % Currently a sparse matrix representation is used.
         %
         % A large table is stored with unique rows for the distinct
-        % monomials appearing in any matrix entry.
+        % monomials appearing in any matrix term.
         %
         %  e.g. for [ 2*x*y^3  0  x^7]
         %
@@ -23,7 +23,7 @@ classdef (InferiorClasses = {?double}) msspoly
         dim = [ 0 0 ];
         
         % E denotes the number of non-zero matrix entries.
-        % v maximum number of variables appearing in any entry.
+        % v maximum number of variables appearing in any term.
         
         % Subscripts are E-by-2, sub(i,:) = [ rowno colno ] 
         % rows should be unique and 1 <= rowno <= numrow
@@ -31,7 +31,7 @@ classdef (InferiorClasses = {?double}) msspoly
         
         % Variables
         % E-by-v  where v is the maximal number of variables in any
-        % entry. The elements indicate the "id number" for variables
+        % term. The elements indicate the "id number" for variables
         % with a set aside id number for "no variable".
         var = zeros(0,1);
         
@@ -43,6 +43,97 @@ classdef (InferiorClasses = {?double}) msspoly
         % E-by-1 list of complex coefficients appearing in any variable.
         coeff = zeros(0,1);
     end
+    
+    
+    
+    
+    methods
+        function p=msspoly(x,y,z,a,b)
+        % function p=msspoly(x,y,z)
+        %
+        % constructor for msspoly class object p 
+        % An msspoly object has 3 fields:  n,m,s, and represents a polynomial
+        % p.m-by-p.n matrix P. Each row s(i,:)=[i,j,k1,...,km,d1,...,dm,c] of s
+        % corresponds to a single term c*(v1^d1)*(v2*d2)*...*(vm^dm) in the
+        % (i,j) entry of P, where vi is the variable with number ki
+        % 
+        % with 0 arguments, 
+        %    p is the empty msspoly object: p.n=p.m=0, p.s=[]
+        % with 1 argument 
+        %    (x 'double', 'msspoly', or 'char')
+        %    p is the msspoly conversion of x
+        % with 2 arguments 
+        %    (x single character, y=[], y=a, or y=[a,b], a,b positive integers)
+        %    x is a column vector of different independent variables;
+        %    y=[]: p=x; y=a: p=[x0;...;x{a-1}]; y=[a,b]: p=[x{b};...;x{b+a-1)]
+        % with 3 arguments (x,y positive integers, z an ms-by-ns,
+        %    p.m=x,  p.n=y,  p.s=z
+        
+        % AM 09.01.09
+            switch nargin,
+              case 0,
+              case 1,
+                switch class(x),
+                  case 'msspoly',
+                    p = x;
+                  case 'double',
+                    if ~all(isfinite(x(:))),
+                        error('infinite coefficients not permitted');
+                    end
+                    p.dim = size(x);
+                    [ii,jj,cc]=find(x);
+                    p.sub = [ii(:) jj(:)];
+                    p.var = zeros(size(p.sub,1),0);
+                    p.pow = zeros(size(p.sub,1),0);
+                    p.coeff = cc(:); 
+                  case 'char',
+                    if ~msspoly.hasSize(x,[1 1])
+                        error(['Variable names must be a single ' ...
+                               'character.']);
+                    end
+                    p.dim = [ 1 1 ];
+                    p.sub = [ 1 1 ];
+                    p.var = msspoly.name_to_id(x);
+                    p.pow = 1;
+                    p.coeff = 1;
+                  otherwise
+                    error(['conversion of ' class(x) ' to msspoly not supported'])
+                end
+              case 2,
+                if ~ischar(x) || ~msspoly.hasSize(x,[1 1])
+                    error(['Variable names must be a single ' ...
+                           'character.']);
+                end
+                if ~isa(y,'double') || ...
+                        length(y) < 1 || ...
+                        length(y) > 2
+                    error(['2nd argument must be a double of length ' ...
+                           'one or two.']); 
+                end
+                y=max(1,round(y(:)'));  % ERROR SUPRESSED: fix me
+                m = y(1);
+                if length(y) == 1, y(2) = 0; end
+                p.dim = [ m 1 ];
+                p.sub = [ (1:m)' ones(m,1) ];
+                p.pow = ones(m,1);
+                p.coeff = ones(m,1);
+                p.var = msspoly.name_to_id(x,y(2)+(1:y(1))'-1);
+              case 5,
+                p.dim = full(x);
+                p.sub = full(y);
+                p.var = full(z);
+                p.pow = full(a);
+                p.coeff = full(b);
+                p = p.make_canonical();
+              otherwise,
+                error('Unsupported arguments.');
+            end
+            
+            [flg,emsg] = check_canonical(p);
+            if flg, error(emsg); end
+        end
+    end
+
     
     methods (Static)
         
@@ -121,6 +212,74 @@ classdef (InferiorClasses = {?double}) msspoly
                 g=sortrows([[x  -(1:mx)'];[y (1:my)']]);
                 g=[[g(1:m-1,1)==g(2:m,1);0] g(:,2)];
                 ik=mss_gset(g);
+            end
+        end
+        
+        function n=name_to_id(ch,m)
+            base=1000000;
+            if nargin<2,
+                n=base*double(ch);
+            elseif m>=base, 
+                error('variable indexes so large are not supported'); 
+            else
+                n=(base*double(ch)+1)+m;
+            end
+        end
+        
+        function name=id_to_name(id)
+            base=1000000;
+            m=floor(id/base);
+            k=id-m*base;
+            name=[char(m) repmat(num2str(k-1),1,(k>0))];
+        end
+        
+        function s=degree_to_string(d)
+            if d>1, s=['^' num2str(d)];
+            else, s=''; end
+        end
+        
+        function s1=term_to_string(s,t)
+            
+            m=length(t);
+            k=round((m-1)/2);
+            a=length(find(t(1:k)));      % index of first non-zero element in t(1:k)
+            if a>1,                      % there are at least two terms
+                ss=[msspoly.id_to_name(t(1)) msspoly.degree_to_string(t(1+k))];
+                for i=2:a,
+                    ss=[ss '*' msspoly.id_to_name(t(i)) msspoly.degree_to_string(t(i+k))];
+                end
+            elseif a==1,
+                ss=[msspoly.id_to_name(t(1)) msspoly.degree_to_string(t(1+k))];
+            else
+                ss='';
+            end
+            if isempty(ss),
+                if isempty(s),
+                    tm=t(m);
+                    s1=sprintf('%.5g',t(m));
+                else
+                    s1=[s sprintf('%+.5g',t(m))];
+                end
+            else
+                if t(m)==1,
+                    if isempty(s),
+                        s1=ss;
+                    else
+                        s1=[s '+' ss];
+                    end
+                elseif t(m)==-1,
+                    if isempty(s),
+                        s1=['-' ss];
+                    else
+                        s1=[s '-' ss];
+                    end
+                else
+                    if isempty(s),
+                        s1=[sprintf('%.5g',t(m)) '*' ss];
+                    else
+                        s1=[s sprintf('%+.5g',t(m)) '*' ss];
+                    end
+                end
             end
         end
         
@@ -427,95 +586,6 @@ classdef (InferiorClasses = {?double}) msspoly
     
     
     
-    
-    
-    methods
-        function p=msspoly(x,y,z,a,b)
-        % function p=msspoly(x,y,z)
-        %
-        % constructor for msspoly class object p 
-        % An msspoly object has 3 fields:  n,m,s, and represents a polynomial
-        % p.m-by-p.n matrix P. Each row s(i,:)=[i,j,k1,...,km,d1,...,dm,c] of s
-        % corresponds to a single term c*(v1^d1)*(v2*d2)*...*(vm^dm) in the
-        % (i,j) entry of P, where vi is the variable with number ki
-        % 
-        % with 0 arguments, 
-        %    p is the empty msspoly object: p.n=p.m=0, p.s=[]
-        % with 1 argument 
-        %    (x 'double', 'msspoly', or 'char')
-        %    p is the msspoly conversion of x
-        % with 2 arguments 
-        %    (x single character, y=[], y=a, or y=[a,b], a,b positive integers)
-        %    x is a column vector of different independent variables;
-        %    y=[]: p=x; y=a: p=[x0;...;x{a-1}]; y=[a,b]: p=[x{b};...;x{b+a-1)]
-        % with 3 arguments (x,y positive integers, z an ms-by-ns,
-        %    p.m=x,  p.n=y,  p.s=z
-        
-        % AM 09.01.09
-            switch nargin,
-              case 0,
-              case 1,
-                switch class(x),
-                  case 'msspoly',
-                    p = x;
-                  case 'double',
-                    if ~all(isfinite(x(:))),
-                        error('infinite coefficients not permitted');
-                    end
-                    p.dim = size(x);
-                    [ii,jj,cc]=find(x);
-                    p.sub = [ii(:) jj(:)];
-                    p.var = zeros(size(p.sub,1),0);
-                    p.pow = zeros(size(p.sub,1),0);
-                    p.coeff = cc(:); 
-                  case 'char',
-                    if ~msspoly.hasSize(x,[1 1])
-                        error(['Variable names must be a single ' ...
-                               'character.']);
-                    end
-                    p.dim = [ 1 1 ];
-                    p.sub = [ 1 1 ];
-                    p.var = mssp_id2n(x);
-                    p.pow = 1;
-                    p.coeff = 1;
-                  otherwise
-                    error(['conversion of ' class(x) ' to msspoly not supported'])
-                end
-              case 2,
-                if ~ischar(x) || ~msspoly.hasSize(x,[1 1])
-                    error(['Variable names must be a single ' ...
-                           'character.']);
-                end
-                if ~isa(y,'double') || ...
-                        length(y) < 1 || ...
-                        length(y) > 2
-                    error(['2nd argument must be a double of length ' ...
-                           'one or two.']); 
-                end
-                y=max(1,round(y(:)'));  % ERROR SUPRESSED: fix me
-                m = y(1);
-                if length(y) == 1, y(2) = 0; end
-                p.dim = [ m 1 ];
-                p.sub = [ (1:m)' ones(m,1) ];
-                p.pow = ones(m,1);
-                p.coeff = ones(m,1);
-                p.var = mssp_id2n(x,y(2)+(1:y(1))'-1);
-              case 5,
-                p.dim = full(x);
-                p.sub = full(y);
-                p.var = full(z);
-                p.pow = full(a);
-                p.coeff = full(b);
-                p = p.make_canonical();
-              otherwise,
-                error('Unsupported arguments.');
-            end
-            
-            [flg,emsg] = check_canonical(p);
-            if flg, error(emsg); end
-        end
-    end
-
     methods (Static)
         function [] = runAllTests()
         % Tests fall into two broad categories.
