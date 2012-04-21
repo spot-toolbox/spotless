@@ -17,7 +17,7 @@ ns = size(p.sub,1);
 for i=1:ns,
     ii=p.sub(i,1);
     jj=p.sub(i,2);
-    S{ii,jj}=mssp_t2s(S{ii,jj},[p.var(i,:) p.pow(i,:) p.coeff(i,:)]);
+    S{ii,jj}=msspoly.term_to_string(S{ii,jj},[p.var(i,:) p.pow(i,:) p.coeff(i,:)]);
 end
 
 L=zeros(1,p.dim(2));
