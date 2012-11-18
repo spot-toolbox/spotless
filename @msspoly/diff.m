@@ -48,6 +48,7 @@ var = p.var(i,:);
 coeff = p.coeff(i).*p.pow(msk);
 pow = p.pow(i,:);
 ind = sub2ind(size(pow),(1:length(i))',j);
+
 pow(ind) = pow(ind) - 1;
 
 J = msspoly([size(p,1) length(xn)],...

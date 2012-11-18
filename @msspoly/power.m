@@ -8,12 +8,13 @@ function q=power(p,n)
 %
     if msspoly.hasSize(n,[1 1])
         q = p.iter_binary(n,@times);
+    elseif msspoly.hasSize(p,[1 1])
+        q = repmat(p,size(n,1),size(n,2)).^n;
     elseif msspoly.hasSize(n,size(p))
-        p0 = p(:);
-        q = msspoly(ones(size(p0)));
-        for i = 1:max(n(:))
-            ni = n(:) >= i;
-            q(ni) = q(ni).*p(ni);
+        q = msspoly(ones(size(p)));
+        
+        for i = 1:prod(size(p))
+            q = assign(q,power(indexinto(p,i),n(i)),i);
         end
     else
         error('Dimensions do not match.');

@@ -64,6 +64,7 @@ if nargin == 1
     o1 = x;
     o2 = p;
     o3 = M;
+    
 % else
 %     [f,xn] = msspoly.isfreemsspoly(x);
     

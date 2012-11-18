@@ -21,7 +21,7 @@ if nargin<2, error('2 inputs required'); end
 p=struct(h);
 if nargin<3, t='free'; end
 if ~ischar(t), error('3rd argument must be a string'); end
-k=strmatch(t,{'free','pos','lor','rlor','psd'},'exact');
+k=strmatch(t,{'free','pos','lor','rlor','psd','hpsd'},'exact');
 if isempty(k), error(['variable type "' t '" not supported']); end
 if nargin<4, s='@'; end
 
@@ -42,6 +42,8 @@ if isa(x,'double'),
         
     if k==5, 
         n=round(m*(m+1)/2); 
+    elseif k==6
+        n=round(2*m*(2*m+1)/2); 
     else
         n=m;
     end
@@ -50,7 +52,7 @@ if isa(x,'double'),
 elseif isa(x,'msspoly'),
     if ~isfree(x), error('2nd argument must be a free mss polynomial'); end
     [n,N]=size(x);
-    if k==5,
+    if k==5
         m=round((sqrt(1+8*n)-1)/2);
         if m*(m+1)~=2*n, error('wrong dimension for the psd type'); end
     else
@@ -61,19 +63,19 @@ else
     error('2nd argument must be "double" or "msspoly"');
 end
 NN=n*N;
-if (k==5)&&(m==1), k=2; end
+if (k==5|k==6)&&(m==1), k=2; end
 u=[p.v;v(:)];
 if ~isfree(u), error('registered variable detected'); end
 p.v=u;
 p.o=[p.o sum(p.t==k)+(1:NN)];
 p.t=[p.t repmat(k,1,NN)];
 switch k,
-    case 3,
-        p.q=[p.q repmat(m,1,N)];
-    case 4,
-        p.r=[p.r repmat(m,1,N)];
-    case 5,
-        p.s=[p.s repmat(m,1,N)];
-        v=mss_v2s(v(1:n));
+  case 3,
+    p.q=[p.q repmat(m,1,N)];
+  case 4,
+    p.r=[p.r repmat(m,1,N)];
+  case 5,
+    p.s=[p.s repmat(m,1,N)];
+    v=mss_v2s(v(1:n));
 end
 q=mssprog(p);

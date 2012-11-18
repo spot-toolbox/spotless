@@ -33,12 +33,18 @@ end
 
 if ~isa(v,'double'), error('Third argument must be a double.'); end
     
-    
+
 [xd,pd,Md] = decomp(p);
+
 
 N = size(v,2);
 po = size(pd,1);
 n = size(pd,2);
+
+if n == 0
+    q = repmat(p,1,N);
+    return;
+end
 
 % First, test that xd is a subset of xn.
 % Sort out indicies.
@@ -53,7 +59,9 @@ end
 
 pd = pd';
 pd = pd(:);
-pow = repmat(v(perm,:),po,1).^repmat(pd(:),1,N); 
+values = repmat(v(perm,:),po,1);
+values(pd(:) < 0,:) = conj(values(pd(:) < 0,:));
+pow = values.^repmat(abs(pd(:)),1,N); 
 
 sz = [po N];
 subs = repmat(1:prod(sz),n,1);

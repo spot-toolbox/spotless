@@ -12,3 +12,34 @@ prog.eq = mss_s2v(Q - [ t*I A ; A' t*I ]); % These are things to avoid!
 [prog,info] = sedumi(prog,t,0,struct());
 
 if abs(svds(A,1) - double(prog(t))) > 1e-6, error(er); end
+
+%% Simple test w/ LPs
+% Simplest possible program
+
+prog = mssprog;
+x  = msspoly('x');
+mn = monomials(x,0:10);
+[prog,coeff] = new(prog,length(mn),'free');
+f = coeff'*mn;
+
+K = 100;
+tt = linspace(-1,1,K);
+yy = double(tt < 0);
+
+err = yy - msubs(f,x,tt);
+
+ [prog,q] = new(prog,K+1,'lor');
+ t = q(1);
+ prog.eq = q(2:K+1)' - err;
+
+% [prog,t] = new(prog,1,'pos');
+% [prog,p] = new(prog,K,'pos');
+% [prog,m] = new(prog,K,'pos');
+
+% prog.eq = p' - (t - err);
+% prog.eq = m' - (t + err);
+
+prog = sedumi(prog,t,0,struct());
+
+fopt = prog(f);
+plot(tt,msubs(fopt,x,tt),tt,yy)

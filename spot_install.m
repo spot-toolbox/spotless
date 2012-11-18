@@ -2,7 +2,7 @@
 
 potdir=pwd;
 n=length(potdir);
-s=potdir(n-4);                    % slash character
+s=potdir(n-8);                    % slash character
 if ~strcmp('spot',potdir(n-3:n))||((s~='\')&&(s~='/')), 
     %    error('Please install SPOT in a "spot" directory!')
 end

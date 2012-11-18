@@ -39,6 +39,10 @@ classdef (InferiorClasses = {?double}) msspoly
         % E-by-v list of non-negative integer powers for each variable.
         pow = zeros(0,1);
         
+        % Conjugation
+        % E-by-v list of variables which have been conjugated.
+        cnj = zeros(0,1);
+        
         % Coeff
         % E-by-1 list of complex coefficients appearing in any variable.
         coeff = zeros(0,1);
@@ -70,6 +74,8 @@ classdef (InferiorClasses = {?double}) msspoly
         %    p.m=x,  p.n=y,  p.s=z
         
         % AM 09.01.09
+            errname = ['Variable names must be . or T. or C. where . is ' ...
+                               'one of: [a-z@#].'];
             switch nargin,
               case 0,
               case 1,
@@ -87,22 +93,13 @@ classdef (InferiorClasses = {?double}) msspoly
                     p.pow = zeros(size(p.sub,1),0);
                     p.coeff = cc(:); 
                   case 'char',
-                    if ~msspoly.hasSize(x,[1 1])
-                        error(['Variable names must be a single ' ...
-                               'character.']);
-                    end
-                    p.dim = [ 1 1 ];
-                    p.sub = [ 1 1 ];
-                    p.var = msspoly.name_to_id(x);
-                    p.pow = 1;
-                    p.coeff = 1;
+                    p = msspoly(x,1);
                   otherwise
                     error(['conversion of ' class(x) ' to msspoly not supported'])
                 end
               case 2,
-                if ~ischar(x) || ~msspoly.hasSize(x,[1 1])
-                    error(['Variable names must be a single ' ...
-                           'character.']);
+                if ~msspoly.isName(x)
+                    error(errname);
                 end
                 if ~isa(y,'double') || ...
                         length(y) < 1 || ...
@@ -116,7 +113,7 @@ classdef (InferiorClasses = {?double}) msspoly
                 p.dim = [ m 1 ];
                 p.sub = [ (1:m)' ones(m,1) ];
                 p.pow = ones(m,1);
-                p.coeff = ones(m,1);
+                p.coeff = ones(m,1);                
                 p.var = msspoly.name_to_id(x,y(2)+(1:y(1))'-1);
               case 5,
                 p.dim = full(x);
@@ -215,26 +212,56 @@ classdef (InferiorClasses = {?double}) msspoly
             end
         end
         
+% User facing name check.
+        function f = isName(ch)
+            namechars = ['@#' 'a'+(0:25)];
+            f = ischar(ch) & ((length(ch)==1 && any(ch == namechars)) | ...
+                              (size(ch,2)==2 && ...
+                               (ch(1) == 'T' | ch(1) == 'C') && ...
+                               any(ch(2) == namechars)));
+        end
+        
+        function msk = isTrigId(vs)
+            msk = mod(vs,2) == 1;
+        end
+        
         function n=name_to_id(ch,m)
-            base=1000000;
-            if nargin<2,
-                n=base*double(ch);
-            elseif m>=base, 
-                error('variable indexes so large are not supported'); 
+            if length(ch) == 1
+                prefix = 0;
             else
-                n=(base*double(ch)+1)+m;
+                switch ch(1)
+                  case 'T', prefix = 1;
+                  otherwise, error(['Bad msspoly name ' ch]);
+                end
+                ch = ch(2);
             end
+            
+            name = 8*ch + prefix;
+            
+            if nargin == 1
+                m = 1;
+            elseif any(m > 100000000)
+                error('Variable IDs this larger are not supported.');
+            end
+
+            n = 8*256*m + name;
         end
         
         function name=id_to_name(id)
-            base=1000000;
-            m=floor(id/base);
-            k=id-m*base;
-            name=[char(m) repmat(num2str(k-1),1,(k>0))];
+            ch = mod(floor(id/8),256);
+            m = round(id/8/256);
+            
+            name = [char(ch) num2str(m)];
+            
+            switch mod(id,8)
+              case 0,
+              case 1, name = [ 'T' name ];
+              otherwise, error(['Bad msspoly id number: ' num2str(id)]);
+            end
         end
         
         function s=degree_to_string(d)
-            if d>1, s=['^' num2str(d)];
+            if d~=1, s=['^' num2str(d)];
             else, s=''; end
         end
         
@@ -257,9 +284,9 @@ classdef (InferiorClasses = {?double}) msspoly
             else, format = '%.5g'; end
             
             if isreal(t(m))
-                coeff_str = sprintf(format,t(m));
+                coeff_str = sprintf(['(' format ')'],t(m));
             elseif real(t(m)) == 0
-                coeff_str = sprintf([format 'i'],imag(t(m)));
+                coeff_str = sprintf(['(' format 'i)'],imag(t(m)));
             else
                 coeff_str = sprintf(['(' format '+' format 'i)'],...
                                     real(t(m)), ...
@@ -372,8 +399,11 @@ classdef (InferiorClasses = {?double}) msspoly
                 return;
             end
             emsg = [];
-            if ~msspoly.isIntGE(p.pow,0)
-                emsg = 'pow must be non-negative integers.';
+            if ~msspoly.isIntGE(p.pow,-Inf)
+                emsg = 'pow must be integers.';
+            elseif any((p.pow < 0) & ~msspoly.isTrigId(p.var))
+                emsg = ['negative powers found for non-trigonometric ' ...
+                        'variables'];
             elseif ~msspoly.isIntGE(p.var,0) % Strengthen to test valid var. names.
                 emsg = 'var must be non-negative integers.';
             elseif ~msspoly.isIntGE(p.sub,1)
@@ -494,7 +524,7 @@ classdef (InferiorClasses = {?double}) msspoly
                 return;
             end
             
-            p.var = p.var.*(p.pow > 0); % Remove zero power
+            p.var = p.var.*(p.pow ~= 0); % Remove zero power
                                         % variables, vi^0
             
             [p.var,I] = sort(p.var,2,'descend'); % Sort for dec. id

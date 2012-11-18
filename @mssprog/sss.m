@@ -20,7 +20,7 @@ if isempty(q), error('input 2 is empty'); end
 pr=pr0;
 [m,n]=size(q);
 if m~=n, error('input 2 not a square matrix'); end
-v=msspoly('#',m);
-[pr,U0,Q0]=sos(pr,v'*q*v);
+v=msspoly('#',m-1);
+[pr,U0,Q0]=sos(pr,[1;v]'*q*[1;v]);
 U=U0{1};
 Q=Q0{1};

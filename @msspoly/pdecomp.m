@@ -19,16 +19,21 @@ function [R,p] = pdecomp(q,x)
     
     msk = q.var == xn;
     J = sub2ind(q.dim,q.sub(:,1),q.sub(:,2));
-    P = max(q.pow.*(msk),[],2);
+    P = max(max(q.pow.*(msk),[],2),0) + min(min(q.pow.*(msk),[],2),0);
     
     [p,~,I] = unique(P);
-    
-    pow = q.pow.*(~msk);
-    var = q.var;
-    
-    R = msspoly([prod(q.dim) length(p)],...
-               [J I],...
-               var,pow,q.coeff);
+
+    if isempty(p) 
+        p = 0;
+        R = q(:);
+    else
+        pow = q.pow.*(~msk);
+        var = q.var;
+        
+        R = msspoly([prod(q.dim) length(p)],...
+                    [J I],...
+                    var,pow,q.coeff);
+    end
 end
     
     

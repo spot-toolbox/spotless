@@ -19,16 +19,15 @@ switch s.type
     p2 = msspoly(p2);
     
     % Case with ':'.
-    if iscolon(s.subs{1})
+    if iscolon(s.subs{1}) & size(s.subs,2) == 1
         if msspoly.hasSize(p2,[1 1])
             p2 = repmat(p2,size(p1));
         elseif prod(size(p2)) ~= prod(size(p1))
             error(['In an assignment  A(:) = B, the number of elements ' ...
-                   'in A and B must be the same.']);
+                      'in A and B must be the same.']);
         end
         q = reshape(p2,size(p1));
         return;
-
     else
         switch length(s.subs)
           case 1,

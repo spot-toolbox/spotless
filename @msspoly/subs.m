@@ -6,12 +6,13 @@ function q=subs(p,a,b)
 %   a -- k-by-1 free msspoly.
 %   b -- k-by-1 msspoly.
 %
-%   Substitutes a(i) with b(i) in p.
+%   Substitutes a(i) with b(i) in p.  Negative powers
+%   are interpreted as complex conjugation.
 %
 
 p = msspoly(p);
 
-[f,x] = isfree(a);
+[f,xn] = isfree(a);
 
 if ~f || size(a,2) ~= 1, 
     error('Second argument must be free k-by-1 msspoly.')
@@ -45,8 +46,11 @@ if s % b is simple.
     if ~isempty(cnsti) && ~isempty(p.pow)
         term = msspoly.match_list(avar(cnsti),var);
         mul   = ones(size(p.pow));
-
-        mul(term~=0) = bcnst(term(term~=0)).^(pow(term~=0));
+        
+        cnsts = bcnst(term(term~=0));
+        cnsts(pow(term~=0) < 0) = conj(cnsts(pow(term~=0) < 0));
+        
+        mul(term~=0) = cnsts.^abs(pow(term~=0));
         pow(term~=0) = 0;
         coeff = coeff.*prod(mul,2);
     end
@@ -54,15 +58,24 @@ if s % b is simple.
     % Where b is a variable, just replace in variable table.
     if ~isempty(vari)
         term = msspoly.match_list(avar(vari),var);
-        var(term~=0) = bvar(term(term~=0));
+        if ~isempty(term)
+            %trig = msspoly.isTrigId(bvar.*(term~=0));
+            var(term~=0) = bvar(term(term~=0));
+        end
+        %pow(term~=0 & ~trig) = abs(pow(term~=0 & ~trig));
     end
     
     q = msspoly(p.dim,p.sub,var,pow,coeff);
 else
     % Second argument is /not/ simple.  Need to perform
     % slower substitution.
+    
+    if msspoly.isTrigId(xn)
+        anon = msspoly('T#',length(a));
+    else
+        anon = msspoly('#',length(a));
+    end
 
-    anon = msspoly('#',length(a));
     p = subs(p,a,anon);
     x = anon;
     r = b;
@@ -74,22 +87,47 @@ else
         end
     else
         [R,pw] = pdecomp(p,x);
-
+        
         if length(pw) < 1
             q = p;
         else
             % Substitution by Horner's Rule
-            q = indexinto(R,':',size(R,2));
+            posp = pw(pw>=0);
+            posR = indexinto(R,':',find(pw>=0));
             
-            for i = length(pw):-1:2
-                q = q*r^(pw(i)-pw(i-1)); % We should memoize powers of r.
-                q = q + indexinto(R,':',i-1);
-                % q = q + R(:,i-1);
+            if any(pw >= 0) == 0
+                qp = 0;
+            else
+                qp = indexinto(posR,':',size(posR,2));
+                
+                for i = length(posp):-1:2
+                    qp = qp*r^(posp(i)-posp(i-1)); % We should memoize powers of r.
+                    qp = qp + indexinto(posR,':',i-1);
+                    % q = q + R(:,i-1);
+                end
+                
+                if double(posp(1)) ~= 0
+                    qp = qp*r^posp(1);
+                end
             end
-            if double(pw(1)) ~= 0
-                q = q*r^pw(1);
+            
+            if any(pw < 0) == 0
+                qn = 0;
+            else
+                negp = pw(pw<0);
+                negR = indexinto(R,':',find(pw<0));
+                qn   = indexinto(negR,':',1);
+                
+                for i = 1:length(negp)-1
+                    qn = qn*conj(r)^(negp(i+1)-negp(i)); % We should memoize powers of r.
+                    qn = qn + indexinto(negR,':',i+1);
+                end
+                
+                qn = qn*conj(r)^(-negp(length(negp)));
             end
-
+                
+            q = qn+qp;
+            
             q = reshape(q,size(p,1),size(p,2));
         end
     end

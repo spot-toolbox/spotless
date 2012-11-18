@@ -10,7 +10,7 @@ function q=indexinto(p,varargin)
     
     pind = sub2ind(p.dim,p.sub(:,1),p.sub(:,2));
     
-    if isempty(pind)
+    if isempty(pind) | isempty(Q)
         q = msspoly.zeros(size(Q));
     else
         

@@ -6,7 +6,7 @@ if p1.dim(2) ~= p2.dim(1)
     if msspoly.hasSize(p1,[1 1])
         p1 = diag(repmat(p1,p2.dim(1),1)); %p1 scalar
     elseif msspoly.hasSize(p2,[1 1])
-        p2 = diag(repmat(p2,p1.dim(1),1)); %p2 scalar
+        p2 = diag(repmat(p2,p1.dim(2),1)); %p2 scalar
     else
         error('Incompatible dimensions.');
     end
