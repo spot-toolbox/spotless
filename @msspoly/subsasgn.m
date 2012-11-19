@@ -47,8 +47,13 @@ switch s.type
             end
             
             if any(ind(:) > prod(size(p1)))
-                error(['In an assignment  A(I) = B, a matrix A cannot ' ...
-                       'be resized.']);
+                if any(size(p1) == 1)
+                    d = find(size(p1) ~= 1);
+                    p1.dim(d) = max(ind(:));
+                else
+                    error(['In an assignment  A(I) = B, a matrix A cannot ' ...
+                           'be resized.']);
+                end
             end
             dim = p1.dim;
             
@@ -72,9 +77,11 @@ switch s.type
                 error(errindextype);
             end
             
-            if any(is > p1.dim(1)) || any(js > p1.dim(2))
-                error('Index exceeds matrix dimensions.');
-            end
+            p1.dim(1) = max(is);
+            p1.dim(2) = max(js);
+%             if any(is > p1.dim(1)) || any(js > p1.dim(2))
+%                 error('Index exceeds matrix dimensions.');
+%             end
 
             % Now we have a list of row/col subscripts.
             % We want all pairs in order, one column at a time.
