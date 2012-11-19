@@ -5,6 +5,10 @@ switch char(s.type),
     q = indexinto(p,s.subs{:});
   case '.',
     switch s.subs,
+      case 'm',
+        q=p.dim(1);
+      case 'n',
+        q=p.dim(2);
       case 'dim',
         q=p.dim;
       case 'sub',
