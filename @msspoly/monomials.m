@@ -1,17 +1,19 @@
-function q=monomials(x,p)
+function [q,dd]=monomials(x,p)
 %
-% q=monomials(x,p)
+% [q,exp]=monomials(x,p)
 %
-%  x -- free msspoly.
+%  x -- n-by-1 free msspoly.
 %  p -- array of non-negative integers.
 %
-%  q -- All monomials of total degree equal to p(i) for some i.
+%  q   -- N-by-1 msspoly: all monomials of total deg. == p(i).
+%  exp -- N-by-n non-negative integer: vector degree of each monomial.
 %
 
 if nargin < 2, error('Two arguments required.'); end
 [f,xn]=isfree(x);
 
 if ~f, error('First argument must be free msspoly'); end
+
 xn = xn(:);
 nx = length(xn);
 
