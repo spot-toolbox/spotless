@@ -88,7 +88,7 @@ function [prog,phi,Q] = sos_torus(prog,q,c,s,mults)
     [~,varid] = isfree(var);        
     b = mss_match(varid,indetid);
     
-    b
+    
     
     options = sdpsettings;
 
