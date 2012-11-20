@@ -1,4 +1,4 @@
-function [prog,phi,Q] = sos_trig(prog,q,c,s,mults)
+function [prog,phi,Q] = sos_torus(prog,q,c,s,mults)
 %
 %  Sum-of-Squares on an n-Torus
 %   
