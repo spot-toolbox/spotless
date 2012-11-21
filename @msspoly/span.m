@@ -5,7 +5,7 @@ function q = span(p)
 %   p -- n-by-1 msspoly
 %   q -- m-by-1 msspoly, m <= n
 %
-%  Polynomials {q(i)}_i have the same span as those {p(i)}_i
+%  Polynomials {q(i)}_i are a linearly independent subset of {p(i)}_i
 %
     if size(p,2) ~=1
         error('Argument must be a column.');
@@ -23,26 +23,20 @@ function q = span(p)
         return;
     end
     
-    qCoeff = Coeff;
     
+    [Q,R] = qr(Coeff');
+    
+    Rsave = zeros(size(R));
+    m = 1;
     for i = 1:n
-        % Term is not the zero poly.
-        if ~all(Coeff(i,:)==0)
-            if m == 0
-                m = 1;
-                qCoeff(1,:) = Coeff(i,:);
-            else
-                b = Coeff(i,:);
-                A = qCoeff(1:m,:);
-                ii = ~all([ A ; b] == 0);
-                c = b(1,ii)/A(:,ii);
-                if norm(b(1,ii)-c*A(:,ii))/norm(b) > 1e-6
-                    m = m+1;
-                    qCoeff(m,:) = Coeff(i,:);
-                end
-            end
+        if R(m,i) ~= 0
+            Rsave(:,m) = R(:,i);
+            m = m+1; % next row!
         end
+        if m > size(R,1), break; end
     end
     
-    q = recomp(var,pow,qCoeff(1:m,:));
+    qCoeff = Rsave(:,1:m-1)'*Q';
+    
+    q = recomp(var,pow,qCoeff);
 end
