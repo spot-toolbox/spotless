@@ -105,12 +105,14 @@ function [prog,phi,Q] = sos_torus(prog,q,c,s,mults)
     disp('Reducing Monomials.');
     exponent_m = monomialreduction(exponent_m,exponent_p_monoms,options,csclasses,LPmodel);
 
-    % Next remove monomials associated with c^2
-    precount = size(exponent_m{1},1);
-    [indet,exponent_m,guess] = trig_power_reduce(indet,exponent_m{1},c,s);
-    postcount = size(exponent_m,1);
+    % Form monomials
+    phi = recomp(indet,exponent_m{1});
     
-    phi = recomp(indet,exponent_m,eye(size(exponent_m,1)));
+    % Substitute 1-s(i)^2 for c(i)^2
+    phi = mss_standardize_trig_power(phi,c,s);
+    
+    % Remove redundant entries
+    phi = span(phi);
 
     [prog,Q] = new(prog,length(phi),'psd');
     
@@ -142,43 +144,5 @@ function [prog,phi,Q] = sos_torus(prog,q,c,s,mults)
     
     prog = eq(prog,A*[1;freevar]);
     
-    
-    function [x,exp,guess] = trig_power_reduce(x,exp,c,s)
-        
-        [~,xid] = isfree(x);
-        [~,cid] = isfree(c);
-        [~,sid] = isfree(s);
-        
-        smtch = mss_match(xid,sid);    
-        x     = [ x ; s(smtch == 0) ];
-        
-        [~,xid] = isfree(x);
-        
-        exp   = [exp zeros(size(exp,1), sum(smtch == 0))];
-        smtch = mss_match(xid,sid);    
-        
-        mtch = mss_match(xid,cid);
-        
-        guess = 0;
-        
-        for i = 1:length(mtch)
-            if mtch(i) ~= 0
-                csq = exp(:,mtch(i)) > 0 & mod(exp(:,mtch(i)),2) == 0;
-                
-                guess = guess + sum(csq);
-                
-                cln = exp(csq,:);
-                cln(:,mtch(i)) = 0;
-                c0 = cln;
-                cln(:,smtch(i)) = 2;
-                
-                exp(csq,:) = [];
-                
-                exp = [ exp ; c0; cln ];
-            end
-        end
-        
-        exp = unique(exp,'rows');
-    end
     
 end
