@@ -74,8 +74,10 @@ classdef (InferiorClasses = {?double}) msspoly
         %    p.m=x,  p.n=y,  p.s=z
         
         % AM 09.01.09
-            errname = ['Variable names must be . or T. or C. where . is ' ...
-                               'one of: [a-z@#].'];
+            errname = ['Variable names must match n or Tn where n ' ...
+                       'is a string, length(n) in 1:' ...
+                       num2str(msspoly.nameLength) ...
+                      ' and n(i) in ' msspoly.nameChars];
             switch nargin,
               case 0,
               case 1,
@@ -213,12 +215,30 @@ classdef (InferiorClasses = {?double}) msspoly
         end
         
 % User facing name check.
+
+        function ch = nameChars(idx)
+            ch = ['@#' 'a'+(0:25)];
+            
+            if nargin > 0, ch = ch(idx); end
+        end
+        function l = nameLength()
+            l = 4;
+        end
+        
+        function mnp = maxNamePart()
+            mnp = (length(msspoly.nameChars)+1).^(msspoly.nameLength);
+        end
+
         function f = isName(ch)
-            namechars = ['@#' 'a'+(0:25)];
-            f = ischar(ch) & ((length(ch)==1 && any(ch == namechars)) | ...
-                              (size(ch,2)==2 && ...
-                               (ch(1) == 'T' | ch(1) == 'C') && ...
-                               any(ch(2) == namechars)));
+            if isempty(ch) || ~ischar(ch)
+                f = 0;
+            elseif ch(1) == 'T'
+                f = msspoly.isName(ch(2:end));
+            else
+                f = length(ch) <= msspoly.nameLength && ...
+                    all(mss_match(msspoly.nameChars,ch)>0);
+            end
+            
         end
         
         function msk = isTrigId(vs)
@@ -226,38 +246,45 @@ classdef (InferiorClasses = {?double}) msspoly
         end
         
         function n=name_to_id(ch,m)
-            if length(ch) == 1
-                prefix = 0;
+            if (length(ch) > 1 & ch(1) == 'T')
+                trigFlag = 1;
+                ch = ch(2:end);
             else
-                switch ch(1)
-                  case 'T', prefix = 1;
-                  otherwise, error(['Bad msspoly name ' ch]);
-                end
-                ch = ch(2);
+                trigFlag = 0;
             end
+            % This line copy pasted in id_to_name :\
+            exponents = (length(msspoly.nameChars)+1).^(length(ch)-1:-1:0);
+            namePart = sum(exponents.*(mss_match(msspoly.nameChars,ch)));
             
-            name = 8*ch + prefix;
+            maxId = floor((2^50)/msspoly.maxNamePart);
             
             if nargin == 1
                 m = 1;
-            elseif any(m > 100000000)
-                error('Variable IDs this larger are not supported.');
+            elseif any(m > maxId)
+                error(['Variable IDs greater than ' num2str(maxId) ...
+                      ' not supported']);
             end
 
-            n = 8*256*m + name;
+            n = trigFlag + 2*( namePart + msspoly.maxNamePart*m);
         end
         
         function name=id_to_name(id)
-            ch = mod(floor(id/8),256);
-            m = round(id/8/256);
+            trigFlag = mod(id,2);
+            namePart = mod(id/2,msspoly.maxNamePart);
+            m = round(id/2/msspoly.maxNamePart);
+
+            % This line copy pasted in name_to_id :\
+            exponents = (length(msspoly.nameChars)+1).^(msspoly.nameLength-1:-1:0);
             
-            name = [char(ch) num2str(m)];
+            nameNo = mod(floor((namePart)./exponents),(length(msspoly.nameChars)+1));
             
-            switch mod(id,8)
-              case 0,
-              case 1, name = [ 'T' name ];
-              otherwise, error(['Bad msspoly id number: ' num2str(id)]);
-            end
+            nameNo = nameNo(find(nameNo ~= 0,1,'first'):end);
+            
+            if isempty(nameNo), nameNo = 0; end
+
+            name = [msspoly.nameChars(nameNo) num2str(m+1)];
+            
+            if trigFlag, name = [ 'T' name ]; end
         end
         
         function s=degree_to_string(d)

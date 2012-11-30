@@ -42,7 +42,7 @@ po = size(pd,1);
 n = size(pd,2);
 
 if n == 0
-    q = repmat(p,1,N);
+    q = repmat(double(p),1,N);
     return;
 end
 

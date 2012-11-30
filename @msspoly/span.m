@@ -5,7 +5,7 @@ function q = span(p)
 %   p -- n-by-1 msspoly
 %   q -- m-by-1 msspoly, m <= n
 %
-%  Polynomials {q(i)}_i are a linearly independent subset of {p(i)}_i
+%  Polynomials {q(k)}_k are a maximal independent subset of {p(i)}_i
 %
     if size(p,2) ~=1
         error('Argument must be a column.');

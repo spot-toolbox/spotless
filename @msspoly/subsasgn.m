@@ -77,8 +77,8 @@ switch s.type
                 error(errindextype);
             end
             
-            p1.dim(1) = max(is);
-            p1.dim(2) = max(js);
+            p1.dim(1) = max(max(is),p1.dim(1));
+            p1.dim(2) = max(max(js),p1.dim(2));
 %             if any(is > p1.dim(1)) || any(js > p1.dim(2))
 %                 error('Index exceeds matrix dimensions.');
 %             end
@@ -103,6 +103,7 @@ switch s.type
         end
         % At this point: p2 is k-by-1 msspoly and ind is k-by-1 unique
         % indices.
+
         p1ind = sub2ind(size(p1),p1.sub(:,1),p1.sub(:,2));
         ik = msspoly.relate(p1ind,ind);
 
