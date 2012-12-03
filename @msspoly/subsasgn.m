@@ -20,7 +20,7 @@ switch s.type
     
     % Case with ':'.
     if iscolon(s.subs{1}) & size(s.subs,2) == 1
-        if msspoly.hasSize(p2,[1 1])
+        if spot_hasSize(p2,[1 1])
             p2 = repmat(p2,size(p1));
         elseif prod(size(p2)) ~= prod(size(p1))
             error(['In an assignment  A(:) = B, the number of elements ' ...
@@ -35,14 +35,14 @@ switch s.type
             ind = s.subs{1};
             ind = ind(:);
             
-            if msspoly.hasSize(p2,[1 1])
+            if spot_hasSize(p2,[1 1])
                 p2 = repmat(p2,length(ind),1);
             elseif length(p2) ~= length(ind)
                 error(['In an assignment  A(I) = B, the number of elements ' ...
                        'in B and  I must be the same.']);
             end            
             
-            if ~msspoly.isIntGE(ind,1), 
+            if ~spot_isIntGE(ind,1), 
                 error(errindextype);
             end
             
@@ -66,14 +66,14 @@ switch s.type
             if iscolon(s.subs{2}), js = (1:p1.dim(2))'; 
             else, js = s.subs{2}(:); end
             
-            if msspoly.hasSize(p2,[1 1])
+            if spot_hasSize(p2,[1 1])
                 p2 = repmat(p2,[length(is) length(js)]);
-            elseif ~msspoly.hasSize(p2,[length(is) length(js)])
+            elseif ~spot_hasSize(p2,[length(is) length(js)])
                 error(['Subscripted assignment dimension ' ...
                        'mismatch.']);
             end
             
-            if ~msspoly.isIntGE(is,1) || ~msspoly.isIntGE(js,1)
+            if ~spot_isIntGE(is,1) || ~spot_isIntGE(js,1)
                 error(errindextype);
             end
             

@@ -14,7 +14,7 @@ function q=integral(p,x)
 
 [f,xn] = msspoly.isfreemsspoly(x);
 
-if ~f || ~msspoly.hasSize(x,[1 1])
+if ~f || ~spot_hasSize(x,[1 1])
     error('Second argument must be 1-by-1 free msspoly.');
 end
 

@@ -4,7 +4,7 @@ p1=msspoly(p1);
 p2=msspoly(p2);
 
 sz = size(p2);
-if ~msspoly.hasSize(p1,sz)
+if ~spot_hasSize(p1,sz)
     error('Incorrect dimensions.');
 end
   

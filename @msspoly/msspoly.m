@@ -109,7 +109,7 @@ classdef (InferiorClasses = {?double}) msspoly
                     error(['2nd argument must be a double of length ' ...
                            'one or two.']); 
                 end
-                y=max(1,round(y(:)'));  % ERROR SUPRESSED: fix me
+                y=max(0,round(y(:)'));  % ERROR SUPRESSED: fix me
                 m = y(1);
                 if length(y) == 1, y(2) = 0; end
                 p.dim = [ m 1 ];
@@ -140,9 +140,9 @@ classdef (InferiorClasses = {?double}) msspoly
             if nargin == 2
                 sz = [sz m];
             end
-            if ~msspoly.hasSize(sz,[1 2])
+            if ~spot_hasSize(sz,[1 2])
                 error('Argument must be 1-by-2');
-            elseif ~msspoly.isIntGE(sz,0)
+            elseif ~spot_isIntGE(sz,0)
                 error('Argument must be non-negative integers');
             end
             
@@ -162,24 +162,6 @@ classdef (InferiorClasses = {?double}) msspoly
                 
         end
         
-        function flg = isIntGE(var,bnd)
-            if nargin < 2, bnd = -Inf; end
-
-            if ~isa(var,'double')
-                flg = 0;
-            elseif ~all(round(var) == var) | any(var < bnd)
-                flg = 0;
-            else
-                flg = 1;
-            end
-        end
-        function flg = hasSize(v,sz)
-            if length(size(v)) ~= length(sz)
-                flg = 0;
-            else
-                flg = all(size(v) == sz);
-            end
-        end
         
         function [s1,s2] = padZeros(s1,s2)
             m1 = size(s1,2);
@@ -398,9 +380,9 @@ classdef (InferiorClasses = {?double}) msspoly
         % Tests that the internal representation has the correct
         % dimensions and types.
             emsg = [];
-            if ~isa(p.dim,'double') || ~msspoly.hasSize(p.dim,[1 2])
+            if ~isa(p.dim,'double') || ~spot_hasSize(p.dim,[1 2])
                 emsg = 'Dimensions must be a 1-by-2 double';
-            elseif ~msspoly.isIntGE(p.dim,0)
+            elseif ~spot_isIntGE(p.dim,0)
                 emsg = 'Dimensions must be non-neg. integers';
             elseif ~all(size(p.sub,1) == ...
                         [size(p.pow,1)  size(p.var,1)  size(p.coeff,1)])
@@ -426,14 +408,14 @@ classdef (InferiorClasses = {?double}) msspoly
                 return;
             end
             emsg = [];
-            if ~msspoly.isIntGE(p.pow,-Inf)
+            if ~spot_isIntGE(p.pow,-Inf)
                 emsg = 'pow must be integers.';
             elseif any((p.pow < 0) & ~msspoly.isTrigId(p.var))
                 emsg = ['negative powers found for non-trigonometric ' ...
                         'variables'];
-            elseif ~msspoly.isIntGE(p.var,0) % Strengthen to test valid var. names.
+            elseif ~spot_isIntGE(p.var,0) % Strengthen to test valid var. names.
                 emsg = 'var must be non-negative integers.';
-            elseif ~msspoly.isIntGE(p.sub,1)
+            elseif ~spot_isIntGE(p.sub,1)
                 emsg = 'sub must be positive integers';
             elseif any(p.sub(:,1) > p.dim(1)) ||...
                     any(p.sub(:,2) > p.dim(2))
@@ -596,7 +578,7 @@ classdef (InferiorClasses = {?double}) msspoly
         end
         
         function q = iter_binary(p,n,f)
-            if ~msspoly.isIntGE(n,0) || ~msspoly.hasSize(n,[1 1])
+            if ~spot_isIntGE(n,0) || ~spot_hasSize(n,[1 1])
                 error('Second argument must be a non-negative integer.');
             end
             
@@ -702,23 +684,23 @@ classdef (InferiorClasses = {?double}) msspoly
             
             e = 'Test Failed (decomp): dimension test.';
             [xx,pp,MM]=decomp(x);
-            if ~msspoly.hasSize(pp,[4 4]), error(e); end
-            if ~msspoly.hasSize(MM,[4 4]), error(e); end
-            if ~msspoly.hasSize(xx,[4 1]), error(e); end
+            if ~spot_hasSize(pp,[4 4]), error(e); end
+            if ~spot_hasSize(MM,[4 4]), error(e); end
+            if ~spot_hasSize(xx,[4 1]), error(e); end
             
             % Assumes indexinto is working.
             x13 = indexinto(x,1:3); x4 = indexinto(x,4);            
             % This assumes plus is working.
             [xx,pp,MM]=decomp(x13+x4);
-            if ~msspoly.hasSize(pp,[4 4]), error(e); end
-            if ~msspoly.hasSize(MM,[3 4]), error(e); end
-            if ~msspoly.hasSize(xx,[4 1]), error(e); end
+            if ~spot_hasSize(pp,[4 4]), error(e); end
+            if ~spot_hasSize(MM,[3 4]), error(e); end
+            if ~spot_hasSize(xx,[4 1]), error(e); end
 
             % This assumes mtimes / diag are working.
             [xx,pp,MM]=decomp(x13*x4);
-            if ~msspoly.hasSize(pp,[3 4]), error(e); end
-            if ~msspoly.hasSize(MM,[3 3]), error(e); end
-            if ~msspoly.hasSize(xx,[4 1]), error(e); end
+            if ~spot_hasSize(pp,[3 4]), error(e); end
+            if ~spot_hasSize(MM,[3 3]), error(e); end
+            if ~spot_hasSize(xx,[4 1]), error(e); end
             
             
             % TODO: test arithmetical correctness (difficult)
@@ -741,15 +723,15 @@ classdef (InferiorClasses = {?double}) msspoly
             
             edim = 'Test failed (dmsubs): dimension test failed.';
             eart = 'Test failed (dmsubs): arithmetic test failed.';
-            if ~msspoly.hasSize(V1,size(X1)), error(edim);  end
+            if ~spot_hasSize(V1,size(X1)), error(edim);  end
             if ~all(all(X1 == V1)), error(eart); end
 
-            if ~msspoly.hasSize(V2,[3 K]), error(edim); end
+            if ~spot_hasSize(V2,[3 K]), error(edim); end
             if ~all(all(X1(1:3,:)+repmat(X1(4,:),3,1) == V2)), error(eart); end
             
 
-            if ~msspoly.hasSize(V3,size(X1)), error(edim); end
-            if ~msspoly.hasSize(V4,size(X1)), error(edim); end
+            if ~spot_hasSize(V3,size(X1)), error(edim); end
+            if ~spot_hasSize(V4,size(X1)), error(edim); end
             if ~all(all(X1(perm,:) == V3)), error(eart); end
             if ~all(all(X1(iperm,:) == V4)), error(eart); end
         end
@@ -813,8 +795,8 @@ classdef (InferiorClasses = {?double}) msspoly
             edim = 'Matrix vector dimension test failed.';
             op = x*x';
             ip = x'*x;
-            if ~msspoly.hasSize(op,[4 4]), error(edim); end
-            if ~msspoly.hasSize(ip,[1 1]), error(edim); end
+            if ~spot_hasSize(op,[4 4]), error(edim); end
+            if ~spot_hasSize(ip,[1 1]), error(edim); end
             if ~isequal(x'*op*x,ip*ip), error(eart); end
             
             e = 'Scalar multiplication arithmetic test failed.';
@@ -824,7 +806,7 @@ classdef (InferiorClasses = {?double}) msspoly
             if ~isequal(4*x,x*4), error(e); end
             
             e = 'Scalar multiplication dimension test failed.';
-            if ~msspoly.hasSize(4*x,size(x)), error(e); end
+            if ~spot_hasSize(4*x,size(x)), error(e); end
             
         end
         

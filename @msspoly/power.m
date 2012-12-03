@@ -6,11 +6,11 @@ function q=power(p,n)
 % 
 % Returns q k-by-m with q(i,j) = p(i,j)^n
 %
-    if msspoly.hasSize(n,[1 1])
+    if spot_hasSize(n,[1 1])
         q = p.iter_binary(n,@times);
-    elseif msspoly.hasSize(p,[1 1])
+    elseif spot_hasSize(p,[1 1])
         q = repmat(p,size(n,1),size(n,2)).^n;
-    elseif msspoly.hasSize(n,size(p))
+    elseif spot_hasSize(n,size(p))
         q = msspoly(ones(size(p)));
         
         for i = 1:prod(size(p))

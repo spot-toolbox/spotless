@@ -4,9 +4,9 @@ if nargin == 3
     rep = [ rep m ];
 end
 
-if ~msspoly.hasSize(rep,[1 2])
+if ~spot_hasSize(rep,[1 2])
     error('Repetition for exactly two dimensions must be given.');
-elseif ~msspoly.isIntGE(rep,1)
+elseif ~spot_isIntGE(rep,1)
     error('Arguments must be positive integers.');
 end
 

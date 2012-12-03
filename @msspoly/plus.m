@@ -2,10 +2,10 @@ function p=plus(p1,p2)
 p1=msspoly(p1);
 p2=msspoly(p2);
 
-if ~msspoly.hasSize(p1,size(p2))
-    if msspoly.hasSize(p1,[1 1])
+if ~spot_hasSize(p1,size(p2))
+    if spot_hasSize(p1,[1 1])
         p1 = repmat(p1,size(p2));
-    elseif msspoly.hasSize(p2,[1 1])
+    elseif spot_hasSize(p2,[1 1])
         p2 = repmat(p2,size(p1));
     else
         error('incompatible dimensions');

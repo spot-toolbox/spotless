@@ -7,7 +7,9 @@ A = randn(n,n);
 
 prog = mssprog;
 [prog,t] = new(prog,1,'pos');
-[prog,Q] = new(prog,2*n,'psd');
+Q = mss_v2s(msspoly('psd',nchoosek(2*n+1,2)));
+prog.psd = mss_s2v(Q);
+%[prog,Q] = new(prog,2*n,'psd');
 prog.eq = mss_s2v(Q - [ t*I A ; A' t*I ]); % These are things to avoid!
 [prog,info] = sedumi(prog,t,0,struct());
 

@@ -23,7 +23,7 @@ if size(x,2) ~= 1
     error('1st argument must be a column.');
 end
 
-if ~msspoly.isIntGE(p,-Inf)
+if ~spot_isIntGE(p,-Inf)
     error('2nd arguments must be non-negative integers');
 end
 

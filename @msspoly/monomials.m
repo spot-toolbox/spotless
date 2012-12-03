@@ -17,7 +17,7 @@ if ~f, error('First argument must be free msspoly'); end
 xn = xn(:);
 nx = length(xn);
 
-if ~msspoly.isIntGE(p,0), error(['Second argument must be array of non-negative ' ...
+if ~spot_isIntGE(p,0), error(['Second argument must be array of non-negative ' ...
                         'integers']); 
 end
 

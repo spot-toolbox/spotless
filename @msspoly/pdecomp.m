@@ -13,7 +13,7 @@ function [R,p] = pdecomp(q,x)
     
     [f,xn] = isfree(x);
     
-    if ~f || ~msspoly.hasSize(x,[1 1])
+    if ~f || ~spot_hasSize(x,[1 1])
         error('Second argument must be free 1-by-1 msspoly.'); 
     end
     

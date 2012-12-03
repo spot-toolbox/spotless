@@ -20,7 +20,7 @@ end
 
 b = msspoly(b);
 
-if ~msspoly.hasSize(a,size(b))
+if ~spot_hasSize(a,size(b))
     error('Second and third argument must have same dimensions.');
 end
 

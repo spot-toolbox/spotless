@@ -1,3 +1,3 @@
 function y=isscalar(p)
-y = msspoly.hasSize(p,[1 1]);
+y = spot_hasSize(p,[1 1]);
 end
