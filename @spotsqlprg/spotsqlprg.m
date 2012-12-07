@@ -39,7 +39,7 @@ classdef spotsqlprg
         end
     end
     
-    methods ( Access = private)
+    methods ( Access = private )
         function nm = freeName(pr)
             nm = [pr.name 'fr'];
         end
@@ -270,7 +270,8 @@ classdef spotsqlprg
         end
         
         
-        function sol = optimize(pr,objective,options)
+        function sol = optimize(pr,objective)
+            objective = msspoly(objective);
             if ~realLinearInDec(pr,objective)
                 error('Objective must be real and linear in dec. variables.');
             end
@@ -367,5 +368,3 @@ classdef spotsqlprg
         
     end
 end
-    
-    
