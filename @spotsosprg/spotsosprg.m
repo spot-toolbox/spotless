@@ -92,12 +92,11 @@ classdef spotsosprg < spotsqlprg
             Q = cell(pr.numSOS,1);
             phi = cell(pr.numSOS,1);
             
-            for i = 1:length(pr.numSOS)
+            for i = 1:pr.numSOS
                 [pr,Q{i},phi{i}] = pr.buildSOSDecomp(pr.sosExpr(i));
             end
             
             sqlsol = optimize@spotsqlprg(pr,objective);
-            sqlsol
             
             sol = spotsossol(sqlsol,Q,phi);
         end
