@@ -32,6 +32,13 @@ classdef spotsosprg < spotsqlprg
             b = 1:length(varid);
             b(mtch(mtch ~= 0)) = [];
             indet = var(b);
+            
+            if length(indet) == 0
+                [pr,Q] = pr.withPos(expr);
+                phi = 1;
+                return;
+            end
+            
     
             pow = pow(:,b);
 
@@ -40,13 +47,14 @@ classdef spotsosprg < spotsqlprg
             exponent_m = monomialgeneration(exponent_p_monoms,csclasses);
     
             options = sdpsettings;
+            options.verbose = 0;
             temp=sdpvar(1,1);
             tempops = options;
             tempops.solver = 'cdd,glpk,*';  % CDD is generally robust on these problems
             tempops.verbose = 0;
             tempops.saveduals = 0;
             [aux1,aux2,aux3,LPmodel] = export(set(temp>0),temp,tempops);  
-            disp('Reducing Monomials.');
+            %disp('Reducing Monomials.');
             exponent_m = monomialreduction(exponent_m,exponent_p_monoms,options,csclasses,LPmodel);
             exponent_m = exponent_m{1};
     
@@ -82,13 +90,15 @@ classdef spotsosprg < spotsqlprg
             n = length(pr.sosExpr);
         end
         
-        function [pr,poly,coeff] = newFreePoly(pr,basis,number)
+        function [pr,poly,coeff] = newFreePoly(pr,basis,n)
             if nargin < 3, n = 1; end
             [pr,coeff] = pr.newFree(length(basis)*n);
             poly = reshape(coeff,n,length(basis))*basis;
         end
         
-        function sol = optimize(pr,objective)
+        function sol = optimize(pr,varargin)
+            if nargin < 2, objective = msspoly(0); end
+
             Q = cell(pr.numSOS,1);
             phi = cell(pr.numSOS,1);
             
@@ -96,7 +106,9 @@ classdef spotsosprg < spotsqlprg
                 [pr,Q{i},phi{i}] = pr.buildSOSDecomp(pr.sosExpr(i));
             end
             
-            sqlsol = optimize@spotsqlprg(pr,objective);
+
+            sqlsol = optimize@spotsqlprg(pr,varargin{:});
+
             
             sol = spotsossol(sqlsol,Q,phi);
         end
