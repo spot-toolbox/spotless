@@ -35,13 +35,19 @@ switch s.type
             ind = s.subs{1};
             ind = ind(:);
             
+            if isa(ind,'logical'),
+                ind = find(ind);
+            end
+    
+
+            
             if spot_hasSize(p2,[1 1])
                 p2 = repmat(p2,length(ind),1);
             elseif length(p2) ~= length(ind)
                 error(['In an assignment  A(I) = B, the number of elements ' ...
                        'in B and  I must be the same.']);
             end            
-            
+                        
             if ~spot_isIntGE(ind,1), 
                 error(errindextype);
             end
