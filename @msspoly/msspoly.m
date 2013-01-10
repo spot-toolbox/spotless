@@ -199,7 +199,7 @@ classdef (InferiorClasses = {?double}) msspoly
 % User facing name check.
 
         function ch = nameChars(idx)
-            ch = ['@#' 'a'+(0:25)];
+            ch = ['@#_' 'a'+(0:25)];
             
             if nargin > 0, ch = ch(idx); end
         end
