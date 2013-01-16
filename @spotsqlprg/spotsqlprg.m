@@ -92,9 +92,7 @@ classdef spotsqlprg
         end
         
         function flag = legalEq(pr,eq)
-            if ~(size(eq,2) == 1 && ...
-                 size(eq,1) > 0  && ...
-                 isa(eq,'msspoly'))
+            if ~isa(eq,'msspoly')
                 flag = 0;
             else
                 flag = realLinearInDec(pr,eq);
@@ -188,13 +186,16 @@ classdef spotsqlprg
         end
         
         function [pr,f] = newFree(pr,dim)
-            if ~spot_hasSize(dim,[1 1]) || ~spot_isIntGE(dim,1)
-                error('Dimension must be scalar positive integer.');
+            if spot_hasSize(dim,[1 1])
+                dim = [ dim 1];
+            end
+            if ~spot_hasSize(dim,[1 2]) || ~spot_isIntGE(dim,1)
+                error('Dimension must be 1-by-1 or 1-by-2 positive integer.');
             end
             
-            f = msspoly(pr.freeName,[dim pr.numFree]);
+            f = reshape(msspoly(pr.freeName,[prod(dim) pr.numFree]),dim);
             
-            pr.freeNum = pr.freeNum+dim;
+            pr.freeNum = pr.freeNum+prod(dim);
         end
         
         function [pr,l] = newLor(pr,dim)
@@ -221,9 +222,10 @@ classdef spotsqlprg
         
         function [pr,y] = withEqs(pr,eq)
             if ~pr.legalEq(eq)
-                error(['Equations must be a column msspoly linear in ' ...
+                error(['Equations must be an msspoly linear in ' ...
                        'decision parameters.']);
             end
+            eq = eq(:);
             
             y = msspoly(pr.dualName,[length(eq) pr.numEq]);
             pr.equations = [pr.equations ; eq];
@@ -253,7 +255,7 @@ classdef spotsqlprg
             end
         end
         
-        function [pr,s,y] = withBlkPSD(pr,exp)
+        function [pr,Qs,y] = withBlkPSD(pr,exp)
             if ~isa(exp,'msspoly')
                 error('Argument must be an msspoly.');
             end
