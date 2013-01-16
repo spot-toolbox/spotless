@@ -3,20 +3,48 @@ classdef spotsosprg < spotsqlprg
        sosExpr = []; 
     end
     methods (Access = private)
-        function flag = realPolyLinearInDec(pr,exp)
+        function [flag,indet] = realPolyLinearInDec(pr,exp)
             [x,pow,Coeff] = decomp(exp);
-            [~,xid] = isfree(x);
-            [~,vid] = isfree(pr.variables);
-
-            mtch = mss_match(xid,vid);
-
+            
+            mtch = match(x,pr.variables);
+            
             flag = ~(any(any(pow(:,mtch(mtch~=0)) > 1)) | ...
                      any(imag(Coeff(:)) ~= 0));
+            
+            if ~flag, 
+                indet = [];
+            else
+                mtch = match(pr.variables,x);
+                indet = x(find(mtch==0));
+                if any(istrig(indet))
+                    flag = 0;
+                    indet = [];
+                end
+            end
+        end
+        
+        function [flag,tIn,pIn] = trigPolyLinearInDec(pr,expr)
+            [x,pow,Coeff] = decomp(expr);
+            
+            mtch = match(x,pr.variables);
+            
+            % TODO: conj. symmetric check.
+            flag = ~(any(any(pow(:,mtch(mtch~=0)) > 1)));
+            
+            if ~flag, 
+                indet = [];
+            else
+                mtch = match(pr.variables,x);
+                indet = x(find(mtch==0));
+                msk = istrig(indet);
+                tIn = indet(find(msk));
+                pIn = indet(find(~msk));
+            end
         end
     end
     
     methods (Access = protected)
-        function [pr,Q,phi] = buildSOSDecomp(pr,expr)
+        function [pr,Q,phi,y,basis] = buildSOSDecomp(pr,expr)
         % Here be dragons.
         %
             if ~spot_hasSize(expr,[1 1])
@@ -39,7 +67,12 @@ classdef spotsosprg < spotsqlprg
                 return;
             end
             
-    
+            
+            % Matrix of power associated with monomials in
+            % indeterminates
+            %
+            %
+            %
             pow = pow(:,b);
 
             exponent_p_monoms = pow;
@@ -68,7 +101,8 @@ classdef spotsosprg < spotsqlprg
             b = subs(sosCnst,decvar,0*decvar);
             [var,pow,Coeff] = decomp([b A].');
     
-            pr = pr.withEqs(Coeff'*[1;decvar]);
+            [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
+            basis = recomp(var,pow,eye(size(pow,1)));
         end
     end
     
@@ -79,11 +113,47 @@ classdef spotsosprg < spotsqlprg
         
         function [pr,tokens] = withSOS(pr,expr)
             if ~pr.realPolyLinearInDec(expr)
-                error(['Coefficients must be real, and expression ' ...
-                       'must be linear in decision variables.']);
+                error(['Coefficients must be real, indeterminates ' ...
+                       'non-trigonometric, and expression must ' ...
+                      'be linear in decision variables.']);
             end
-            tokens = length(pr.sosExpr) + 1:prod(size(expr));
+            tokens = length(pr.sosExpr) + (1:prod(size(expr)));
             pr.sosExpr = [ pr.sosExpr ; expr(:)];
+        end
+        
+        function [pr,tokens] = withSOSMatrix(pr,expr)
+            [lindec,indet] = pr.realPolyLinearInDec(expr);
+            if ~lindec
+                error(['Coefficients must be real, indeterminates ' ...
+                       'non-trigonometric, and expression must ' ...
+                      'be linear in decision variables.']);
+            end
+            
+            if size(expr,1) ~= size(expr,2) || size(expr,1) == 0
+                error('Expression must be a square non-empty matrix.');
+            end
+            
+            x = msspoly('x',size(expr,1));
+            expr = anonymize(expr,'y',indet);
+            [pr,tokens] = withSOS(pr,x'*expr*x);
+        end
+        
+        function [pr,tokens] = withUniTrigSOSMatrix(pr,expr)
+            if size(expr,1) ~= size(expr,2) || size(expr,1) == 0
+                error('Expression must be a square non-empty matrix.');
+            end
+            
+            [lindec,trigIndet,polyIndet] = pr.trigPolyLinearInDec(expr);
+            if ~lindec
+                error(['Expression ' ...
+                       'must be linear in decision variables.']);
+            elseif ~isempty(polyIndet) || (length(trigIndet) ~= 1)
+                error('Only a single, trigonometric indeterminate allowed.');
+            end
+            
+            
+            % How to handle these?  Special case? Maybe...
+
         end
         
         function n = numSOS(pr)
@@ -103,14 +173,14 @@ classdef spotsosprg < spotsqlprg
             phi = cell(pr.numSOS,1);
             
             for i = 1:pr.numSOS
-                [pr,Q{i},phi{i}] = pr.buildSOSDecomp(pr.sosExpr(i));
+                [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecomp(pr.sosExpr(i));
             end
             
 
             sqlsol = optimize@spotsqlprg(pr,varargin{:});
 
             
-            sol = spotsossol(sqlsol,Q,phi);
+            sol = spotsossol(sqlsol,Q,phi,y,basis);
         end
     end
 end
