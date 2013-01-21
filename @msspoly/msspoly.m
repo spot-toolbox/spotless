@@ -151,7 +151,7 @@ classdef (InferiorClasses = {?double}) msspoly
         
     end
     
-    methods (Static, Access = private)
+    methods (Static)
         function [b,xn] = isfreemsspoly(y)
             if ~isa(y,'msspoly'), 
                 b = 0; 

@@ -9,7 +9,12 @@ function f = fn(p,x)
 %     x -- A free n-by-1 msspoly of unique degree 1 monomials.
 %
 
-    [xf,pf,Mf]=decomp(msspoly(p));    
+    [xf,pf,Mf]=decomp(msspoly(p));
+    
+    if isempty(Mf)
+        f = @(x) zeros(size(p));
+        return;
+    end
 
     if isempty(xf)
         f = @(x) reshape(Mf,size(p));
