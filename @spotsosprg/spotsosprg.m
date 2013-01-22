@@ -54,10 +54,11 @@ classdef spotsosprg < spotsqlprg
             decvar = pr.variables;
 
             [var,pow,M] = decomp(expr);
-            [~,decvarid] = isfree(decvar);    
-            [~,varid] = isfree(var);
-            mtch = mss_match(varid,decvarid);
-            b = 1:length(varid);
+            mtch = match(var,decvar);
+%             [~,decvarid] = isfree(decvar);    
+%             [~,varid] = isfree(var);
+%             mtch = mss_match(varid,decvarid);
+            b = 1:length(var);
             b(mtch(mtch ~= 0)) = [];
             indet = var(b);
             
@@ -97,12 +98,13 @@ classdef spotsosprg < spotsqlprg
             decvar = [decvar ; mss_s2v(Q)];
             sosCnst = expr-phi'*Q*phi;
 
-            A = diff(sosCnst,decvar);
-            b = subs(sosCnst,decvar,0*decvar);
-            [var,pow,Coeff] = decomp([b A].');
+            [pr,y,basis] = pr.withPolyEqs(expr-phi'*Q*phi);
+            % A = diff(sosCnst,decvar);
+%             b = subs(sosCnst,decvar,0*decvar);
+%             [var,pow,Coeff] = decomp([b A].');
     
-            [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
-            basis = recomp(var,pow,eye(size(pow,1)));
+%             [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
+%             basis = recomp(var,pow,eye(size(pow,1)));
         end
     end
     
@@ -119,6 +121,27 @@ classdef spotsosprg < spotsqlprg
             end
             tokens = length(pr.sosExpr) + (1:prod(size(expr)));
             pr.sosExpr = [ pr.sosExpr ; expr(:)];
+        end
+        
+        function [pr,y,basis] = withPolyEqs(pr,expr)
+            if ~pr.realPolyLinearInDec(expr)
+                error(['Coefficients must be real, indeterminates ' ...
+                       'non-trigonometric, and expression must ' ...
+                       'be linear in decision variables.']);
+            end
+
+            expr = expr(:);
+            decvar = pr.variables;
+            
+            [indet,pow,M] = decomp(expr,decvar);
+            
+            monom = recomp(indet,pow,eye(size(pow,1)));
+            
+            [I,J,S] = find(M);
+            
+            [pr,y] = pr.withEqs(S);
+            
+            basis = monom(J);
         end
         
         function [pr,tokens] = withSOSMatrix(pr,expr)
@@ -175,7 +198,7 @@ classdef spotsosprg < spotsqlprg
             for i = 1:pr.numSOS
                 [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecomp(pr.sosExpr(i));
             end
-            
+            keyboard
 
             sqlsol = optimize@spotsqlprg(pr,varargin{:});
 
