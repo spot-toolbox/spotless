@@ -198,7 +198,6 @@ classdef spotsosprg < spotsqlprg
             for i = 1:pr.numSOS
                 [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecomp(pr.sosExpr(i));
             end
-            keyboard
 
             sqlsol = optimize@spotsqlprg(pr,varargin{:});
 
