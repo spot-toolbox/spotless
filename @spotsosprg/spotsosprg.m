@@ -55,9 +55,6 @@ classdef spotsosprg < spotsqlprg
 
             [var,pow,M] = decomp(expr);
             mtch = match(var,decvar);
-%             [~,decvarid] = isfree(decvar);    
-%             [~,varid] = isfree(var);
-%             mtch = mss_match(varid,decvarid);
             b = 1:length(var);
             b(mtch(mtch ~= 0)) = [];
             indet = var(b);
@@ -98,13 +95,13 @@ classdef spotsosprg < spotsqlprg
             decvar = [decvar ; mss_s2v(Q)];
             sosCnst = expr-phi'*Q*phi;
 
-            [pr,y,basis] = pr.withPolyEqs(expr-phi'*Q*phi);
-            % A = diff(sosCnst,decvar);
-%             b = subs(sosCnst,decvar,0*decvar);
-%             [var,pow,Coeff] = decomp([b A].');
-    
-%             [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
-%             basis = recomp(var,pow,eye(size(pow,1)));
+            %[pr,y,basis] = pr.withPolyEqs(expr-phi'*Q*phi);
+            A = diff(sosCnst,decvar);
+            b = subs(sosCnst,decvar,0*decvar);
+            [var,pow,Coeff] = decomp([b A].');
+            
+            [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
+            basis = recomp(var,pow,eye(size(pow,1)));
         end
     end
     
@@ -194,7 +191,8 @@ classdef spotsosprg < spotsqlprg
 
             Q = cell(pr.numSOS,1);
             phi = cell(pr.numSOS,1);
-            
+            y   = cell(pr.numSOS,1);
+            basis   = cell(pr.numSOS,1);
             for i = 1:pr.numSOS
                 [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecomp(pr.sosExpr(i));
             end
