@@ -1,6 +1,6 @@
 classdef spotsosprg < spotsqlprg
     properties
-       sosExpr = []; 
+        sosExpr = [];
     end
     methods (Access = private)
         function [flag,indet] = realPolyLinearInDec(pr,exp)
