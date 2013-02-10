@@ -27,6 +27,9 @@ end
 [~,avar] = issimple(a); 
 avar = avar(:,1); % We know that a is simple as its free.
 
+% First Scenario, p depends on a linearly.
+
+    
 % For efficiency several cases are handled in this function.
 % First we handle the case where b is simple.
 [s,bvarcnst] = issimple(b);
@@ -37,11 +40,11 @@ if s % b is simple.
     cnsti = find(bvarcnst(:,1)==0);
     bvar = bvarcnst(vari,1);
     bcnst = bvarcnst(cnsti,2);
-
+    
     var = p.var;
     pow   = p.pow;
     coeff = p.coeff;
-
+    
     % Where b is a double, compute corresponding power and remove.
     if ~isempty(cnsti) && ~isempty(p.pow)
         term = msspoly.match_list(avar(cnsti),var);
@@ -66,6 +69,11 @@ if s % b is simple.
     end
     
     q = msspoly(p.dim,p.sub,var,pow,coeff);
+elseif deg(p,a) <=1 
+    % Polynomial is /linear/ in variables to be substituted.
+    pA = diff(p,a);
+    pc = subs(p,a,0*a);
+    q = pA*b + pc;
 else
     % Second argument is /not/ simple.  Need to perform
     % slower substitution.
@@ -75,11 +83,11 @@ else
     else
         anon = msspoly('#',length(a));
     end
-
+    
     p = subs(p,a,anon);
     x = anon;
     r = b;
-
+    
     if length(x) > 1
         q = p;
         for i = 1:length(x)
@@ -125,7 +133,7 @@ else
                 
                 qn = qn*conj(r)^(-negp(length(negp)));
             end
-                
+            
             q = qn+qp;
             
             q = reshape(q,size(p,1),size(p,2));
