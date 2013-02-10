@@ -337,7 +337,7 @@ classdef spotsqlprg
             
             function [bs,As] = linearToSedumi(lin)
                 [veq,peq,Ceq] = decomp(lin);
-                constant = all(peq == 0,2);
+                constant = ~any(peq~=0,2);%all(peq == 0,2);
                 cnsti = find(constant);
                 
                 bs = -Ceq(:,cnsti);
