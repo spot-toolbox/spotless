@@ -361,7 +361,7 @@ classdef spotsqlprg
             [~,c] = linearToSedumi(objective);
             
             dualObjective = b'*pr.dualVariables;
-            
+
             [x,y,info] = sedumi(A,b,c,K,options);
             
             if info.pinf, 

@@ -315,7 +315,7 @@ classdef SPOTSQLProg
             end
             
             if size(exp,1) == 1
-                [pr] = pr.withPos(pr,exp);
+                [pr] = pr.withPos(exp);
             else
                 pr.lorCnst{end+1} = exp;
             end
@@ -439,7 +439,7 @@ classdef SPOTSQLProg
         end
         
         
-        function sol = optimizeStandardPrimal(pr,objective,options)
+        function sol = minimizePrimalForm(pr,objective,options)
             if nargin < 2, objective = 0; end
             if nargin < 3, options = struct('fid',0); end
 
@@ -493,9 +493,11 @@ classdef SPOTSQLProg
            sol = SPOTSQLSoln(pr,info,user_variables,primalSol);
        end
        
-       function sol = optimizeStandardDual(pr,objective,options)
-            if nargin < 2, objective = 0; end
-            if nargin < 3, options = struct('solver','sedumi'); end
+       function sol = minimizeDualForm(pr,objective,options)
+            if nargin < 3, options = struct(); end
+            if ~isfield(options,'solver'),
+                options.solver = 'sedumi';
+            end
             if ~isfield(options,'solver_options')
                 if strcmp(options.solver,'sedumi')
                     options.solver_options = struct('fid',0);
@@ -509,8 +511,9 @@ classdef SPOTSQLProg
             end
             
              if ~SPOTSQLProg.isStandardDualProg(pr)
-               warning(['Right now the program must be in standard dual ' ...
+               error(['Right now the program must be in standard dual ' ...
                         'format.']);
+
                [pr,G,h] = pr.standardDual();
             else
                 G = speye(size(user_variables,1));
@@ -566,6 +569,7 @@ classdef SPOTSQLProg
             
             [mAT,cm] = SPOTSQLProg.decompLinear(vall,pr.variables);
             [b,~]   = SPOTSQLProg.decompLinear(objective,pr.variables);
+            b = -b.';
             
             [i,j,s] = find(mAT);
 
@@ -592,7 +596,7 @@ classdef SPOTSQLProg
             end
 
             if info.dinf || info.pinf,
-                primalSol = NaN*ones(size(length(varNo),1));
+                primalSol = NaN*ones(size(pr.variables,1),1);
             else
                 primalSol = y;
             end
@@ -618,6 +622,7 @@ classdef SPOTSQLProg
             constant = ~any(peq~=0,2);%all(peq == 0,2);
             cnsti = find(constant);
             
+
             b = -Ceq(:,cnsti);
             Aeq = Ceq(:,~constant)*peq(~constant,:);
             
@@ -625,9 +630,10 @@ classdef SPOTSQLProg
             veqIndices = match(vall,veq);
             
             % T*vall = veq;
-            T = sparse(1:length(veq),veqIndices,ones(length(veq),1));
+            T = sparse(1:length(veq),veqIndices,ones(length(veq),1),length(veq),length(vall));
             
             A = Aeq*T;
+
         end
         
         function [As,bs] = linearToSedumi(lin,vall,varNo,KvarCnt)
