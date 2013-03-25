@@ -1,4 +1,0 @@
-test_nl_fitting_setup;
-
-%test_nl_fitting_primal;
-test_nl_fitting_dual;
