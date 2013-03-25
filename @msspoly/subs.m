@@ -35,7 +35,6 @@ avar = avar(:,1); % We know that a is simple as its free.
 [s,bvarcnst] = issimple(b);
 
 if s % b is simple.
-     % First replace variable names.
     vari = find(bvarcnst(:,1)~=0);
     cnsti = find(bvarcnst(:,1)==0);
     bvar = bvarcnst(vari,1);
@@ -69,11 +68,14 @@ if s % b is simple.
     end
     
     q = msspoly(p.dim,p.sub,var,pow,coeff);
-elseif deg(p,a) <=1 
-    % Polynomial is /linear/ in variables to be substituted.
-    pA = diff(p,a);
-    pc = subs(p,a,0*a);
-    q = pA*b + pc;
+% TODO: the branch below is wrong for trigonometric variables -- fix and
+% restore.
+% elseif deg(p,a) <=1 
+%     22
+%     % Polynomial is /linear/ in variables to be substituted.
+%     pA = diff(p,a);
+%     pc = subs(p,a,0*a);
+%     q = pA*b + pc;
 else
     % Second argument is /not/ simple.  Need to perform
     % slower substitution.
