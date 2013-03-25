@@ -117,8 +117,9 @@ classdef SPOTSQLProg
             end
         end
     end
+    
+    % ---- General modeling methods (i.e. posing inequalities)
     methods
-        
         function pr=SPOTSQLProg(name)
         % pr=SPOTSQLProg(prefix)
         %
@@ -320,6 +321,10 @@ classdef SPOTSQLProg
                 pr.lorCnst{end+1} = exp;
             end
         end
+    end
+    
+    % -----  Methods for dealing with Primal form.
+    methods
         
         function [spPrg,G,h] = standardPrimalWithFree(prg)
         %
@@ -365,6 +370,239 @@ classdef SPOTSQLProg
             G = Coeff(:,mtch)';
             
         end
+        
+ 
+        
+        
+        function sol = minimizePrimalForm(pr,objective,options)
+            if nargin < 2, objective = 0; end
+            if nargin < 3, options = struct('fid',0); end
+
+            objective = msspoly(objective);
+            if ~realLinearInDec(pr,objective)
+                error('Objective must be real and linear in dec. variables.');
+            end
+            
+            user_variables = pr.variables;
+            
+            [pr,G,h] = pr.standardPrimalWithFree();
+
+            %  First, construct structure with counts of SeDuMi
+            %  variables.
+            K = struct();
+            K.f = pr.freeNum;
+            K.l = pr.posNum;
+            K.q = pr.lorDim;
+            K.r = pr.rlorDim;
+            K.s = pr.psdDim;
+            
+            KvarCnt = K.f+K.l+sum(K.q)+sum(K.r)+sum(K.s.^2);
+            
+            
+            v = [ pr.freeVariables
+                  pr.posVariables
+                  pr.lorVariables
+                  pr.rlorVariables ];
+            
+            vpsd = pr.psdVariables;
+            
+            vall = [v;vpsd];
+ 
+            [psdVarNo] = SPOTSQLProg.upperTriToFullVarNo(length(vpsd),pr.psdDim);
+            
+            varNo = [ 1:length(v) length(v)+psdVarNo];
+            
+           [A,b] = SPOTSQLProg.linearToSedumi(pr.equations,vall,varNo,KvarCnt);
+           [c,~] = SPOTSQLProg.linearToSedumi(objective,vall,varNo,KvarCnt);
+
+           [x,y,info] = sedumi(A,b,c,K,options);
+           
+           if info.pinf, 
+               primalSol = NaN*ones(size(length(varNo),1));
+           else
+               primalSol = x(varNo);
+           end
+           
+           primalSol = G*primalSol + h;
+           
+           sol = SPOTSQLSoln(pr,info,user_variables,primalSol);
+       end
+       
+       
+              
+    end
+
+    
+    % ---- Methods for dealing with Dual Form.
+    
+    methods (Static, Access = private)
+        function f = isStandardDualProg(prg)
+            f = isa(prg,'SPOTSQLProg') && ...
+                isempty(prg.equations) && ...
+                prg.numPos == 0 && ...
+                prg.numPSD == 0 && ...
+                prg.numLor == 0;
+        end
+    end
+    
+    methods
+        function [prred,y0,G] = dualFormLPFacialReduction(pr)
+        %
+        %   [prgred] = dualFormLPFacialReduction(prg)
+        %
+        %
+        %  Takes in a program in standard dual form:
+        %
+        %       C-A(y) in K
+        %
+        %  Returns a new program in fewer free variables:
+        %
+        %       Cbar-Abar(ybar) in Kbar
+        %
+        %  such that feasible solutions map one-to-one via:  y = y0 + Gybar.
+            
+        %  The algorithm is iterative, identifying equations
+        %  implied by the conic constraints.
+
+            
+            if ~isStandardDualProg(pr)
+                error('Program must be in standard dual form.');
+            end
+            
+            
+            zeroPos     = [];
+            zeroLorBnd  = [];
+            zeroPSDDiag = [];
+            
+            y = pr.variables;
+            
+            contReduction = 1;
+            while contReduction
+                % First, construct system of equations.
+                % F(y) + g = 0.
+                
+                % Construct an LP for the smaller program.
+                [posEq,nnPos,nnPosI] = reducedPos(pr,zeroPos);
+                [lorEq,nnLor,nnLorI] = reducedLorBnd(pr,zeroLorBnd);
+                [psdEq,nnPSD,nnPSDI] = reducedPSDDiag(pr,zeroPSDDiag);
+                
+                equations = [ posEq ; lorEq ; psdEq ];
+                
+                [F,g] = SPOTSQLProg.decompLinear(equations,y)
+                
+                % Particular solution and null-space.
+                [G,y0] = spot_sparse_null(F,g);
+                
+                
+                % A(y) + b >=0  elt. wise
+                [A,b] = SPOTSQLProg.decompLinear([nnPos;nnLor;nnPSD],y)
+                
+                % Substitute y = y0 + Gr.
+                A = A*G;
+                b = A*y0 + b;
+                
+                % Find always active constraints.
+                isActive = spot_lp_always_active(A,b);
+                                
+                if sum(isActive) == 0
+                    break;
+                else
+                    isActivePos = isActive(1:length(nnPos));
+                    isActiveLor = isActive(length(nnPos)+(1:length(nnLor)));
+                    isActivePSD = isActive(length(nnPos)+length(nnLor)+(1:length(nnPSD)));
+                    
+                    zeroPos     = sort([ zeroPos ; nnPosI(isActivePos) ]);
+                    zeroLorBnd  = sort([ zeroLorBnd ; nnLorI(isActiveLor) ]);
+                    zeroPSDDiag = sortrows([ zeroPSDDiag ; nnPSDI(isActivePSD,:) ]);
+                end
+                
+            end
+            
+            % Non-Negative Orthant Constraint:
+            % zeroPos indicates terms forced to be zero.
+            function [posEq,nnPos,nnPosI] = reducedPos(pr,zeroPos)
+                posEq = pr.posCnst(zeroPos);
+                nnPosI = (1:length(pr.posCnst))';
+                nnPosI(zeroPos) = [];
+                nnPos = pr.posCnst(nnPosI);
+            end
+
+            % Non-Negative Orthant Constraint:
+            % zeroLorBnd indicates lorentz Cone variables that
+            % should be zero (the entire cone)
+            function [lorEq,nnLor,nnLorI] = reducedLorBnd(pr,zeroLor)
+                lorEq  = [];
+                nnLor  = [];
+                nnLorI = [];
+                if length(pr.lorCnst) == 0, return; end
+                
+                zoff = 0;
+                zmax = 0;
+                for i = 1:length(pr.lorCnst)
+                    % Step on, construct 
+                    zoff = zmax;
+                    zmax = zmax + size(pr.lorCnst{i},2);
+                    
+                    J = find((zeroLor > zoff) & (zeroLor <= zmax));
+                    I = (1:zmax-zoff)';
+                    I(zeroLor(J)-zoff) = [];
+                    
+                    lorEq = [ lorEq ; reshape(pr.lorCnst{i}(:,zeroLor(J)-zoff),[],1) ];
+                    
+                    nnLor  = [ nnLor  ; pr.lorCnst{i}(1,I)' ];
+                    nnLorI = [ nnLorI ; I+zoff ];
+                end
+            end
+            
+            % Positive Definite Constraint
+            % zeroPSDDiag two columns, first indicating psd
+            % Constraint number, second which diagonal entry is zero.
+            % one PSD cone at a time along diagonal.
+            function [psdEq,nnPSD,nnPSDI] = reducedPSDDiag(pr,zeroPSDDiag)
+                psdEq  = [];
+                nnPSD  = [];
+                nnPSDI = [];
+                if length(pr.psdCnst) == 0, return; end
+                
+                zoff = 0;
+                zmax = 0;
+                for i = 1:length(pr.psdCnst)
+                    zoff = zmax;
+                    zmax = zmax + size(pr.psdCnst{i},2);
+                    
+                    N = size(pr.psdCnst{i},2);
+                    no = size(pr.psdCnst{i},1);
+                    n = SPOTSQLProg.psdNoToDim(no);
+                    
+                    J = find( zeroPSDDiag(:,1) > zoff & ...
+                              zeroPSDDiag(:,1)  <= zmax);
+                    
+                    entriesOff = [ zerosPSDDiag(J,1)-zoff ...
+                                   zerosPSDDiag(J,2) ];
+                    
+                    % Matrix indicating zero diagonals
+                    zD = sparse(entriesOff(:,2),entriesOff(:,1),...
+                                ones(size(entriesOff,1),1),...
+                                n,N);
+                    
+                    [i,j] = find(~zD);
+                    nnPSDI = [ j+zoff i]; % Diagonal entries.
+                    nnPSD  = pr.psdCnst{i}(sub2ind(size(pr.Cnst{i}),D(i),j)); 
+                    
+                    % Mark entries corresponding to rows in zD
+                    R = repmat(mss_s2v(repmat((1:n)',1,n)),1,N);
+                    C = repmat(mss_s2v(repmat((1:n),n,1)),1,N);
+                    K = repmat(1:N,size(R,1),1);
+                    
+                    I = zD(sub2ind(size(zD),R(:),K(:)))| ...
+                        zD(sub2ind(size(zD),C(:),K(:)));
+                    
+                    psdEq = find(pr.psdCnst{i}(I));
+                end
+            end
+            
+        end
+        
         
         
         function [prgout,G,h] = standardDual(prg)
@@ -438,61 +676,6 @@ classdef SPOTSQLProg
           
         end
         
-        
-        function sol = minimizePrimalForm(pr,objective,options)
-            if nargin < 2, objective = 0; end
-            if nargin < 3, options = struct('fid',0); end
-
-            objective = msspoly(objective);
-            if ~realLinearInDec(pr,objective)
-                error('Objective must be real and linear in dec. variables.');
-            end
-            
-            user_variables = pr.variables;
-            
-            [pr,G,h] = pr.standardPrimalWithFree();
-
-            %  First, construct structure with counts of SeDuMi
-            %  variables.
-            K = struct();
-            K.f = pr.freeNum;
-            K.l = pr.posNum;
-            K.q = pr.lorDim;
-            K.r = pr.rlorDim;
-            K.s = pr.psdDim;
-            
-            KvarCnt = K.f+K.l+sum(K.q)+sum(K.r)+sum(K.s.^2);
-            
-            
-            v = [ pr.freeVariables
-                  pr.posVariables
-                  pr.lorVariables
-                  pr.rlorVariables ];
-            
-            vpsd = pr.psdVariables;
-            
-            vall = [v;vpsd];
- 
-            [psdVarNo] = SPOTSQLProg.upperTriToFullVarNo(length(vpsd),pr.psdDim);
-            
-            varNo = [ 1:length(v) length(v)+psdVarNo];
-            
-           [A,b] = SPOTSQLProg.linearToSedumi(pr.equations,vall,varNo,KvarCnt);
-           [c,~] = SPOTSQLProg.linearToSedumi(objective,vall,varNo,KvarCnt);
-
-           [x,y,info] = sedumi(A,b,c,K,options);
-           
-           if info.pinf, 
-               primalSol = NaN*ones(size(length(varNo),1));
-           else
-               primalSol = x(varNo);
-           end
-           
-           primalSol = G*primalSol + h;
-           
-           sol = SPOTSQLSoln(pr,info,user_variables,primalSol);
-       end
-       
        function sol = minimizeDualForm(pr,objective,options)
             if nargin < 3, options = struct(); end
             if ~isfield(options,'solver'),
@@ -604,18 +787,11 @@ classdef SPOTSQLProg
             sol = SPOTSQLSoln(pr,info,user_variables,G*primalSol+h);
         end
     end
-       
            
+    
+    
+    % ---- General methods for manipulating equations.
     methods (Static, Access = private)
-        
-        function f = isStandardDualProg(prg)
-            f = isa(prg,'SPOTSQLProg') && ...
-                isempty(prg.equations) && ...
-                prg.numPos == 0 && ...
-                prg.numPSD == 0 && ...
-                prg.numLor == 0;
-        end
-        
         
         function [A,b] = decompLinear(lin,vall)
             [veq,peq,Ceq] = decomp(lin);
