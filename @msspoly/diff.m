@@ -35,25 +35,32 @@ elseif nargin == 3
     p = p(:);
 end
 
-%  Find rows with xn(i) in them
-match = msspoly.match_list(xn,p.var);
-msk   = match ~= 0;
-[i,j] = ind2sub(size(p.var),find(msk));
+[q,err]=double(p);
 
-% match(msk) -- which column to place result in
-% i -- which entries to draw var/pow/coeff from
-% j -- which power to decrement / multiply by coeff
-
-var = p.var(i,:);
-coeff = p.coeff(i).*p.pow(msk);
-pow = p.pow(i,:);
-ind = sub2ind(size(pow),(1:length(i))',j);
-
-pow(ind) = pow(ind) - 1;
-
-J = msspoly([size(p,1) length(xn)],...
-           [ p.sub(i,1) match(msk) ],...
-           var,pow,coeff);
+if ~err
+    J = zeros(size(p,1),size(x,1));
+    
+else
+    %  Find rows with xn(i) in them
+    match = msspoly.match_list(xn,p.var);
+    msk   = match ~= 0;
+    [i,j] = ind2sub(size(p.var),find(msk));
+    
+    % match(msk) -- which column to place result in
+    % i -- which entries to draw var/pow/coeff from
+    % j -- which power to decrement / multiply by coeff
+    
+    var = p.var(i,:);
+    coeff = p.coeff(i).*p.pow(msk);
+    pow = p.pow(i,:);
+    ind = sub2ind(size(pow),(1:length(i))',j);
+    
+    pow(ind) = pow(ind) - 1;
+    
+    J = msspoly([size(p,1) length(xn)],...
+                [ p.sub(i,1) match(msk) ],...
+                var,pow,coeff);
+end
 
 if nargin == 3
     J = reshape(J*d,szp);
