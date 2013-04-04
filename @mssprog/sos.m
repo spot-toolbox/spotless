@@ -13,6 +13,21 @@ function [pr,U,Q]=sos(pr0,q)
 % registers new semidefinite decision variables Q{i}, as well as
 % the equalities q(i)=U{i}'*Q{i}*U{i} with pr (updated to pr1)
 
+cacheSize = 10;
+persistent cachedExponents;
+persistent cachedNewtPolys;
+persistent cachePtr;
+persistent cacheMiss;
+
+if isempty(cacheMiss),
+    cacheMiss = 0;
+end
+if isempty(cachedExponents), 
+    cachedExponents = {};
+    cachedNewtPoly = {};
+    cachePtr = 1;
+end
+
 if nargin<2, error('2 inputs required'); end
 if ~isa(q,'msspoly'), error('input 2 not an "msspoly"'); end
 if isempty(q), error('input 2 is empty'); end
@@ -31,22 +46,25 @@ for i = 1:prod(size(q))
     indet = var(b);
     
     pow = pow(:,b);
+    
+    cacheHit = 0;
+    for j = 1:length(cachedExponents)
+        if spot_hasSize(pow,size(cachedExponents{j})) & ...
+                all(pow == cachedExponents{j})
+            exponent_m = cachedNewtPolys{j};
+            cacheHit = 1;
+            break;
+        end
+    end
+    if ~cacheHit,
+        cacheMiss = cacheMiss + 1;
+        exponent_m = spot_build_gram_basis(pow);
+        cachedExponents{cachePtr} = pow;
+        cachedNewtPolys{cachePtr} = exponent_m;
+        cachePtr = cachePtr + 1;
+        if i > cacheSize, cachePtr = 1; end
+    end
 
-    exponent_p_monoms = pow;
-    csclasses={1:length(b)};
-    exponent_m = monomialgeneration(exponent_p_monoms,csclasses);
-    
-    options = sdpsettings;
-    temp=sdpvar(1,1);
-    tempops = options;
-    tempops.solver = 'cdd,glpk,*';  % CDD is generally robust on these problems
-    tempops.verbose = 0;
-    tempops.saveduals = 0;
-    [aux1,aux2,aux3,LPmodel] = export(set(temp>0),temp,tempops);  
-    disp('Reducing Monomials.');
-    exponent_m = monomialreduction(exponent_m,exponent_p_monoms,options,csclasses,LPmodel);
-    exponent_m = exponent_m{1};
-    
     U{i} = recomp(indet,exponent_m,eye(size(exponent_m,1)));
     [pr,Q{i}] = new(pr,length(U{i}),'psd');
     
