@@ -39,27 +39,33 @@ end
 
 if ~err
     J = zeros(size(p,1),size(x,1));
-    
 else
     %  Find rows with xn(i) in them
     match = msspoly.match_list(xn,p.var);
     msk   = match ~= 0;
-    [i,j] = ind2sub(size(p.var),find(msk));
     
-    % match(msk) -- which column to place result in
-    % i -- which entries to draw var/pow/coeff from
-    % j -- which power to decrement / multiply by coeff
+    ind = find(msk);
     
-    var = p.var(i,:);
-    coeff = p.coeff(i).*p.pow(msk);
-    pow = p.pow(i,:);
-    ind = sub2ind(size(pow),(1:length(i))',j);
+    if isempty(ind)
+        J = zeros(size(p,1),size(x,1));
+    else    
+        [i,j] = ind2sub(size(p.var),find(msk));
     
-    pow(ind) = pow(ind) - 1;
+        % match(msk) -- which column to place result in
+        % i -- which entries to draw var/pow/coeff from
+        % j -- which power to decrement / multiply by coeff
     
-    J = msspoly([size(p,1) length(xn)],...
-                [ p.sub(i,1) match(msk) ],...
-                var,pow,coeff);
+        var = p.var(i,:);
+        coeff = p.coeff(i).*p.pow(msk);
+        pow = p.pow(i,:);
+        ind = sub2ind(size(pow),(1:length(i))',j);
+    
+        pow(ind) = pow(ind) - 1;
+    
+        J = msspoly([size(p,1) length(xn)],...
+                    [ p.sub(i,1) match(msk) ],...
+                    var,pow,coeff);
+    end
 end
 
 if nargin == 3

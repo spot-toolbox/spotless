@@ -24,6 +24,11 @@ if ~spot_hasSize(a,size(b))
     error('Second and third argument must have same dimensions.');
 end
 
+if isempty(p), 
+    q = []; 
+    return;
+end
+
 [~,avar] = issimple(a); 
 avar = avar(:,1); % We know that a is simple as its free.
 
@@ -68,14 +73,14 @@ if s % b is simple.
     end
     
     q = msspoly(p.dim,p.sub,var,pow,coeff);
-% TODO: the branch below is wrong for trigonometric variables -- fix and
-% restore.
-% elseif deg(p,a) <=1 
-%     22
-%     % Polynomial is /linear/ in variables to be substituted.
-%     pA = diff(p,a);
-%     pc = subs(p,a,0*a);
-%     q = pA*b + pc;
+elseif deg(p,a) <=1 
+     % Polynomial is /linear/ in variables to be substituted.
+     sz = size(p);
+     p = p(:);
+     
+     pA = diff(p,a);
+     pc = subs(p,a,0*a);
+     q = reshape(pA*b + pc,sz);
 else
     % Second argument is /not/ simple.  Need to perform
     % slower substitution.
