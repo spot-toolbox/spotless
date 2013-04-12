@@ -12,8 +12,8 @@ function [mpow,coeffIndxPos,coeffIndxZero] = spot_build_gram_basis(pow,mpow)
     numHyperPlanes = 2000;
     [mpow] = RandomPrune(pow,mpow,numHyperPlanes);
     
-    
     [mpow,coeffIndxPos,coeffIndxZero] = DiagConsistent(pow,mpow);
+
 end
     
   
@@ -34,8 +34,7 @@ function mpow = RandomPrune(pow,mpow,numHyperPlanes)
         
         %keep mpow if 2*mpow is in convhull(pow)
         mpow = mpow(y <= thres1 & y >= thres2,:);
-        N(i) = size(mpow,1);      
-        
+               
         %Quit if we've pruned mpow enough.
         if (size(mpow,1) < 100)
             break;
