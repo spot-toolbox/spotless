@@ -88,5 +88,7 @@ else
     end
 end
 
+
+x = msspoly(x);
 end
 

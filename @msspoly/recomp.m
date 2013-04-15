@@ -39,21 +39,22 @@ elseif length(x) ~= size(p,2)
     error('powers and variables do not have matching dimensions.');
 end
 
-
-
-N = size(M,1);
-nz = reshape(find(M ~= 0),[],1);
-[I,J] = ind2sub(size(M),nz);
-
-vs = repmat(xn',length(J),1);
-
-
-dim = [ N 1 ];
-sub = [ I ones(size(I)) ];
-var = vs;
-pow = full(p(J,:));
-coeff = reshape(full(M(nz)),[],1);
-
-q = msspoly(dim,sub,var,pow,coeff);
-
+if isempty(x), 
+    q = M;
+else
+    N = size(M,1);
+    nz = reshape(find(M ~= 0),[],1);
+    [I,J] = ind2sub(size(M),nz);
+    
+    vs = repmat(xn',length(J),1);
+    
+    
+    dim = [ N 1 ];
+    sub = [ I ones(size(I)) ];
+    var = vs;
+    pow = full(p(J,:));
+    coeff = reshape(full(M(nz)),[],1);
+    
+    q = msspoly(dim,sub,var,pow,coeff);
+end
 end

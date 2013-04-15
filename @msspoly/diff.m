@@ -38,7 +38,7 @@ end
 [q,err]=double(p);
 
 if ~err
-    J = zeros(size(p,1),size(x,1));
+    J = msspoly(zeros(size(p,1),size(x,1)));
 else
     %  Find rows with xn(i) in them
     match = msspoly.match_list(xn,p.var);
@@ -47,7 +47,7 @@ else
     ind = find(msk);
     
     if isempty(ind)
-        J = zeros(size(p,1),size(x,1));
+        J = msspoly(zeros(size(p,1),size(x,1)));
     else    
         [i,j] = ind2sub(size(p.var),find(msk));
     
