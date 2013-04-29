@@ -58,7 +58,7 @@ classdef spotprog
         end
         function [d,err] = psdNoToDim(n)
             d=round((sqrt(1+8*n)-1)/2);
-            if spotsdp.psdDimToNo(d) ~= n
+            if spotprog.psdDimToNo(d) ~= n
                 d = NaN;
                 err = 1;
             else
@@ -190,7 +190,6 @@ classdef spotprog
             z = msspoly(pr.varName,[n pr.numVar]);
             y = msspoly(pr.eqDualName,[n pr.numDualVar]);
             
-            
             pr.dualCstrVar = [ pr.dualCstrVar(1:off) 
                                y 
                                pr.dualCstrVar(off+1:length(pr.dualCstrVar))];
@@ -211,8 +210,9 @@ classdef spotprog
         end
         
         function v = decToVar(prog,x)
-            [~,I] = sort(prog.coneToVar);
-            v = x(I);
+            v = x(prog.coneToVar);
+            % [~,I] = sort(prog.coneToVar);
+            % v = x(I);
         end
         
         function y = dualEqVariables(pr)
@@ -224,8 +224,9 @@ classdef spotprog
             y = msspoly(pr.eqDualName,[length(e) pr.numDualVar]);
             pr.dualVar = [ pr.dualVar ; y];
             [Anew,bnew] = spot_decomp_linear(e,pr.variables);
+            [~,I] = sort(pr.coneToVar);
             pr.b = [ pr.b ; bnew];
-            pr.A = [ pr.A ; Anew(:,pr.coneToVar) ];
+            pr.A = [ pr.A ; Anew(:,I) ];
 
         end
         
@@ -430,13 +431,18 @@ classdef spotprog
                 coneToCstrVar(toShift) = coneToCstrVar(toShift) + K1len(i);
                 shiftPt = shiftPt + K1len(i) + K2len(i);
             end
-            
+
             pr.coneVar = [ coneVar ; coneCstrVar ];
             pr.coneToVar = [ coneToVar ; coneToCstrVar ];
-            
+
             % Next we need to square away the equations.
-            [Anew,bnew] = spot_decomp_linear(g-F*coneVar-coneCstrVar,pr.coneVar);
-            pr.A = [ pr.A ; Anew];
+            [~,Ivar] = sort(coneToVar);
+            [~,Icstr] = sort(coneToCstrVar);
+            [Anew,bnew] = spot_decomp_linear(g-F*coneVar(Ivar)-coneCstrVar(Icstr),pr.coneVar);
+
+            [~,I] = sort(pr.coneToVar);
+
+            pr.A = [ pr.A ; Anew(:,I)];
             pr.b = [ pr.b ; bnew];
             pr.dualVar = [ pr.dualVar ; dualCstrVar ];
             
@@ -451,18 +457,23 @@ classdef spotprog
             if nargin < 3,
                 solver = @spot_sedumi;
             end
-            
+
             pr = prog.toPrimalWithFree();
             [~,nf] = spotprog.coneDim(pr.K1);
             [P,A,b,c,K,d] = pr.toSedumi(pobj);
             
             % Enable removal of redundant equations.
-            %[feas,E,F,g,U,V,w,A,b,c,K] = spot_sdp_remove_redundant_eqs(A,b,c,K);
+            [feas,E,F,g,U,V,w,Ad,bd,cd,Kd] = spot_sdp_remove_redundant_eqs(A,b,c,K);
+
             % Enable basic facial reduction.
-            [x,y,z,info] = solver(A,b,c,K);
-            
+            [x,y,z,info] = solver(Ad,bd,cd,Kd);
+
+            x = E\(F*x+g);
+            y = U\(V*y+w);
+            z = c - A'*y;
+
             xsol = P*x;
-            zsol = P(nf+1:end,nf+1:end)*z;
+            zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
 
             sol = spotprogsol(pr,xsol,y,zsol,info);
         end
@@ -498,7 +509,9 @@ classdef spotprog
             for i = 1:length(pr.K1.s)
                 projs{i} = projMap(pr.K1.s(i));
             end
-            P = blkdiag(projs{:});
+            if isempty(projs), P = [];
+            else, P = blkdiag(projs{:});
+            end
             A = [ pr.A(:,1:nf+nl+nq+nr) pr.A(:,nf+nl+nq+nr+(1:ns))*P];
             
             c = [ c(1:nf+nl+nq+nr)
