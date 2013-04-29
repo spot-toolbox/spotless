@@ -31,7 +31,7 @@ function errors = spot_sdp_dimacs(A,b,c,K,x,y,z)
         for i = 1:length(K.s)
             n = K.s(i);
             if n == 0, continue; end            
-            lm = min(min(eig(reshape(x(off+(1:n^2)),n,n))),lm);
+            lm = min(min(eig(full(reshape(x(off+(1:n^2)),n,n)))),lm);
             off = off + n^2;
         end
     end
