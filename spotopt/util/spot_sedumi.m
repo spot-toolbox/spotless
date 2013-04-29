@@ -1,5 +1,5 @@
 function [x,y,z,info] = spot_sedumi(A,b,c,K)
-    [x,y,s_info] = sedumi(A,b,c,K);
+    [x,y,s_info] = sedumi(A,b,c,K,struct('fid',0));
     z = c - A'*y;
     
     info.primalInfeasible = s_info.pinf;

@@ -27,7 +27,7 @@ function [] = testCstr(prorig,solver,logger)
         [pr,obj(i),zero(i),tol(i)] = fns{i}(pr);
     end
     
-    sol = pr.minimize(solver,sum(obj));
+    sol = pr.minimize(sum(obj),solver);
     zero = double(sol.eval(zero));
     J = find(tol <= abs(double(sol.eval(zero))));
     
