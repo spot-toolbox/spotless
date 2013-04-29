@@ -43,7 +43,7 @@ function [] = testCstr(prorig,solver,logger)
     for i = 1:N
         pr = prorig;
         [pr,obj,zero,tol] = fns{i}(pr);
-        sol = pr.minimize(solver,obj);
+        sol = pr.minimize(obj,solver);
         zero = double(sol.eval(zero));
         
         if abs(zero) > tol
