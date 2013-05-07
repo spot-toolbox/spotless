@@ -4,7 +4,8 @@ function [] = testCstr(prorig,solver,logger)
 %
 %  [] = testCstr(pr,solver)
 %
-%  Tests all binary combinations of constraints in the 
+%  Tests all programs together, and each individually, then certain
+%  random collections.
 %
     
     if nargin < 3, logger = @disp; end
@@ -51,4 +52,29 @@ function [] = testCstr(prorig,solver,logger)
                            mFiles{J(j)},zero,tol));
         end
     end
+    
+    P = 10;
+    
+    for i = 1:P
+        I = randperm(N);
+        n = max(1,min(N,poissrnd(N/3)));
+        obj  = msspoly(zeros(n,1));
+        zero = msspoly(zeros(n,1));
+        tol  = zeros(n,1);
+        pr = prorig;
+        name = '';
+        for j = 1:n
+            name = [ name mFiles{I(j)} ':' ];
+            [pr,obj(j),zero(j),tol(j)] = fns{I(j)}(pr);
+        end
+        sol = pr.minimize(sum(obj),solver);
+        zero = double(sol.eval(zero));
+        J = find(tol <= abs(double(sol.eval(zero))));
+        if length(J) > 0
+            logger(sprintf('\tRandom combination %s failed.',...
+                           name));
+        end
+    end
+    
+    
 end
