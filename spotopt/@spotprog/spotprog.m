@@ -20,7 +20,7 @@ classdef spotprog
         %
         % Dual:
         %  
-        %    max. (b,y) - (q,g),
+        %    max. (y,b) - (q,g),
         %    q in K2*,
         %    c-A2'y-F2'*q = z in K1*,
         %    c1 = A1'*y+F1'*q
@@ -35,7 +35,6 @@ classdef spotprog
         %
         
         coneVar = [];
-        dualVar = [];
         coneToVar = [];
         
         coneCstrVar = [];
@@ -92,15 +91,22 @@ classdef spotprog
             nr = sum(K.r);
             ns = sum(spotprog.psdDimToNo(K.s));
         end
+        
+        function [of,ol,oq,or,os] = coneOffset(K)
+            of = K.f;
+            ol = of+K.l;
+            oq = ol+sum(K.q);
+            or = oq+sum(K.r);
+            os = or+sum(spotprog.psdDimToNo(K.s));
+        end
     end
     
     methods ( Access = private )        
         function n = numVar(pr)
-            n = length(pr.coneVar) + length(pr.coneCstrVar);
+            n = length(pr.coneVar) + length(pr.coneCstrVar) + ...
+                length(pr.dualVar) + length(pr.dualCstrVar);
         end
-        function n = numDualVar(pr)
-            n = length(pr.dualVar) + length(pr.dualCstrVar);
-        end
+
 
         function n = numEquations(pr)
             n = size(pr.A,1);
@@ -113,44 +119,41 @@ classdef spotprog
             nm = [prog.name 'var'];
         end
         
-        function nm = eqDualName(prog)
-            nm = [prog.name 'deq'];
-        end
         
         function off = freeOffset(pr)
-            off = pr.K1.f;
+            off = spotprog.coneOffset(pr.K1);
         end
         
         function off = posOffset(pr)
-            off = pr.freeOffset + pr.K1.l;
+            [~,off] = spotprog.coneOffset(pr.K1);
         end
         
         function off = lorOffset(pr)
-            off = pr.posOffset + sum(pr.K1.q);
+            [~,~,off] = spotprog.coneOffset(pr.K1);
         end
         
         function off = rlorOffset(pr)
-            off = pr.lorOffset + sum(pr.K1.r);
+            [~,~,~,off] = spotprog.coneOffset(pr.K1);
         end
         
         function off = psdOffset(pr)
-            off = pr.rlorOffset + sum(spotprog.psdDimToNo(pr.K1.s));
+            [~,~,~,~,off] = spotprog.coneOffset(pr.K1);
         end
         
         function off = posCstrOffset(pr)
-            off = pr.K2.l;
+            [~,off] = spotprog.coneOffset(pr.K2);
         end
         
         function off = lorCstrOffset(pr)
-            off = pr.posCstrOffset + sum(pr.K2.q);
+            [~,~,off] = spotprog.coneOffset(pr.K2);
         end
         
         function off = rlorCstrOffset(pr)
-            off = pr.lorCstrOffset + sum(pr.K2.r);
+            [~,~,~,off] = spotprog.coneOffset(pr.K2);
         end
         
         function off = psdCstrOffset(pr)
-            off = pr.rlorCstrOffset + sum(spotprog.psdDimToNo(pr.K2.s));
+            [~,~,~,~,off] = spotprog.coneOffset(pr.K2);
         end
         
                 
@@ -188,7 +191,7 @@ classdef spotprog
             n = size(Fnew,1);
 
             z = msspoly(pr.varName,[n pr.numVar]);
-            y = msspoly(pr.eqDualName,[n pr.numDualVar]);
+            y = msspoly(pr.varName,[n pr.numVar+length(z)]);
             
             pr.dualCstrVar = [ pr.dualCstrVar(1:off) 
                                y 
@@ -209,6 +212,14 @@ classdef spotprog
             v = pr.coneVar;
         end
         
+        function v = cstrVariables(pr)
+            v = pr.coneCstrVar;
+        end
+        
+        function nf = numFree(pr)
+            nf = pr.coneDim(pr.K1);
+        end
+        
         function v = decToVar(prog,x)
             v = x(prog.coneToVar);
             % [~,I] = sort(prog.coneToVar);
@@ -221,7 +232,7 @@ classdef spotprog
         
         function [pr,y] = withEqs(pr,e)
             e = e(:);
-            y = msspoly(pr.eqDualName,[length(e) pr.numDualVar]);
+            y = msspoly(pr.varName,[length(e) pr.numVar]);
             pr.dualVar = [ pr.dualVar ; y];
             [Anew,bnew] = spot_decomp_linear(e,pr.variables);
             [~,I] = sort(pr.coneToVar);
@@ -229,6 +240,33 @@ classdef spotprog
             pr.A = [ pr.A ; Anew(:,I) ];
 
         end
+        
+        function [pr,z,y] = withCone(pr,e,K)
+            [nf,nl,nq,nr,ns]=spotprog.coneDim(K);
+            [of,ol,oq,or,os]=spotprog.coneOffset(K);
+            if nf+nl+nq+nr+ns ~= size(e,1)
+                error('Cone size does not match dim.');
+            end
+
+            if size(e,2) == 0, return; end
+            
+            if nl > 0, [pr,zl,yl] = pr.withPos(e(1:of));
+            else, zl = []; yl = []; end
+
+            if nq > 0, [pr,zq,yq] = pr.withLor(e(of+(1:oq)),K.q);
+            else, zq = []; yq = []; end
+
+            if nr > 0, [pr,zr,yr] = pr.withRLor(e(oq+(1:or)),K.r);
+            else, zr = []; yr = []; end
+
+            if ns > 0, [pr,zs,ys] = pr.withBlkPSD(e(or+(1:os)),K.s);
+            else, zs = []; ys = []; end
+            
+            y = [ yl ; yq ; yr ; ys ];
+            z = [ zl ; zq ; zr ; zs ];
+            
+        end
+        
         
         function [pr,z,y] = withPos(pr,e)
             n = prod(size(e));
@@ -377,89 +415,30 @@ classdef spotprog
             V = mss_v2s(v);
         end
         
+        function pred = isStandardDual(pr)
+            pred = pr.numEquations == 0 && spotprog.coneDim(pr.K1) == 0;
+        end
+        
         function pred = isPrimalWithFree(pr)
             pred = 0 == pr.K2.l && ...
                    isempty([ pr.K2.q pr.K2.r pr.K2.s]);
         end
         
-        function [pr] = toPrimalWithFree(pr)
-            if pr.isPrimalWithFree()
-                return;
-            end
-            g = pr.g;
-            F = pr.F;
-            coneCstrVar = pr.coneCstrVar;
-            dualCstrVar = pr.dualCstrVar;
-            coneToCstrVar = pr.coneToCstrVar;
-            K2 = pr.K2;
-            
-            pr.g = [];
-            pr.F = [];
-            pr.coneCstrVar = [];
-            pr.dualCstrVar = [];
-            pr.coneToCstrVar = [];
-            pr.K2 = struct('f',0,'l',0,'q',[],'r',[],'s',[]);
-            
-            % Next, we need to move over the coneCstrVar.
-            coneVar = pr.coneVar;
-            coneToVar = pr.coneToVar;
-            
-            % Migrate over the linear constraints.
-            K1len = [ pr.K1.l
-                      sum(pr.K1.q)
-                      sum(pr.K1.r)
-                      sum(spotprog.psdDimToNo(pr.K1.s)) ];
-            K2len = [ K2.l
-                      sum(K2.q)
-                      sum(K2.r)
-                      sum(spotprog.psdDimToNo(K2.s)) ];
-
-            % Insert gaps into the old mapping.
-            insertPt = pr.K1.f;
-            coneToCstrVar = coneToCstrVar + pr.K1.f;
-            shiftPt = pr.K1.f;
-            for i = 1:length(K1len)
-                % Add gap in original variables.
-                insertPt = insertPt + K1len(i);
-                toShift = coneToVar > insertPt;
-                coneToVar(toShift) = coneToVar(toShift)+K2len(i);
-                pr.A = [pr.A(:,1:insertPt) sparse(size(pr.A,1),K2len(i)) pr.A(:,insertPt+1:end)];
-                insertPt = insertPt + K2len(i);
-                
-                % Move other variables over.
-                toShift = coneToCstrVar > shiftPt;
-                coneToCstrVar(toShift) = coneToCstrVar(toShift) + K1len(i);
-                shiftPt = shiftPt + K1len(i) + K2len(i);
-            end
-
-            pr.coneVar = [ coneVar ; coneCstrVar ];
-            pr.coneToVar = [ coneToVar ; coneToCstrVar ];
-
-            % Next we need to square away the equations.
-            [~,Ivar] = sort(coneToVar);
-            [~,Icstr] = sort(coneToCstrVar);
-            [Anew,bnew] = spot_decomp_linear(g-F*coneVar(Ivar)-coneCstrVar(Icstr),pr.coneVar);
-
-            [~,I] = sort(pr.coneToVar);
-
-            pr.A = [ pr.A ; Anew(:,I)];
-            pr.b = [ pr.b ; bnew];
-            pr.dualVar = [ pr.dualVar ; dualCstrVar ];
-            
-            pr.K1.l = pr.K1.l + K2.l;
-            pr.K1.q = [ pr.K1.q  K2.q];
-            pr.K1.r = [ pr.K1.r  K2.r];
-            pr.K1.s = [ pr.K1.s  K2.s];
-        end
+        
         
         
         function [sol] = minimize(prog,pobj,solver)
+            if nargin < 2,
+                pobj = 0;
+            end
             if nargin < 3,
                 solver = @spot_sedumi;
             end
+            
+            pobj = msspoly(pobj);
 
-            pr = prog.toPrimalWithFree();
-            [~,nf] = spotprog.coneDim(pr.K1);
+            pr = prog.primalize();
+            [nf] = spotprog.coneDim(pr.K1);
             [P,A,b,c,K,d] = pr.toSedumi(pobj);
             
             % Enable removal of redundant equations.
@@ -475,7 +454,7 @@ classdef spotprog
             xsol = P*x;
             zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
 
-            sol = spotprogsol(pr,xsol,y,zsol,info);
+            sol = spotprogsol(pr,pobj,xsol,y,zsol,info);
         end
     end
     
