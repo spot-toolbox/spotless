@@ -14,8 +14,18 @@ function [x,y] = spot_eq_solve(A,b,tol)
     
     if nargin < 3, tol = 1e-6; end
     
-    if prod(size(A)) == 0
+    if size(A,1) ~= size(b,1)
+        error('Equations sizes do not match.');
+    end
+    
+    if size(A,2) == 0
         error('spot_eq_solve: empty arguments not supported.');
+    end
+    
+    if size(A,1) == 0
+        x = zeros(size(A,2),1);
+        y = [];
+        return;
     end
     
     
