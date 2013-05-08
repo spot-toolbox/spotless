@@ -205,7 +205,16 @@ classdef spotprog
     end
 
     methods
-        function pr = spotprog()
+        function pr = spotprog(name)
+            if nargin < 1,
+                name = '@';
+            end
+            
+            if ~spot_hasSize(name,[1 1]) | ~msspoly.isName(name)
+                error(['Argument must be a single character valid ' ...
+                       'msspoly name.']);
+            end
+            pr.name = name;
         end
         
         function v = variables(pr)
