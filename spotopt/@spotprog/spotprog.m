@@ -27,8 +27,9 @@ classdef spotprog
         %
         % variables = x(p).
         %
-        K1 = struct('f',0,'l',0,'q',[],'r',[],'s',[]);
-        K2 = struct('f',0,'l',0,'q',[],'r',[],'s',[]);
+        freeNo = 0;
+        K1 = struct('l',0,'q',[],'r',[],'s',[]);
+        K2 = struct('l',0,'q',[],'r',[],'s',[]);
         
         % w = [x;z],  w(p(i)) corresponds to variable i.
         % Really, I want v(p(i)) corresponds to variable x(i).
@@ -36,6 +37,7 @@ classdef spotprog
         
         coneVar = [];
         coneToVar = [];
+        dualVar = [];
         
         coneCstrVar = [];
         dualCstrVar = [];
@@ -84,17 +86,16 @@ classdef spotprog
                 error('Dimension and vector size disagree.');
             end
         end
-        function [nf,nl,nq,nr,ns] = coneDim(K)
-            nf = K.f;
+        
+        function [nl,nq,nr,ns] = coneDim(K)
             nl = K.l;
             nq = sum(K.q);
             nr = sum(K.r);
             ns = sum(spotprog.psdDimToNo(K.s));
         end
         
-        function [of,ol,oq,or,os] = coneOffset(K)
-            of = K.f;
-            ol = of+K.l;
+        function [ol,oq,or,os] = coneOffset(K)
+            ol = K.l;
             oq = ol+sum(K.q);
             or = oq+sum(K.r);
             os = or+sum(spotprog.psdDimToNo(K.s));
@@ -116,44 +117,47 @@ classdef spotprog
 
         
         function nm = varName(prog)
-            nm = [prog.name 'var'];
+            nm = [prog.name 'v'];
         end
         
-        
         function off = freeOffset(pr)
-            off = spotprog.coneOffset(pr.K1);
+            off = pr.numFree;
         end
         
         function off = posOffset(pr)
-            [~,off] = spotprog.coneOffset(pr.K1);
+            [off] = spotprog.coneOffset(pr.K1);
+            off = off + pr.freeOffset;
         end
         
         function off = lorOffset(pr)
-            [~,~,off] = spotprog.coneOffset(pr.K1);
+            [~,off] = spotprog.coneOffset(pr.K1);
+            off = off + pr.freeOffset;
         end
         
         function off = rlorOffset(pr)
-            [~,~,~,off] = spotprog.coneOffset(pr.K1);
+            [~,~,off] = spotprog.coneOffset(pr.K1);
+            off = off + pr.freeOffset;
         end
         
         function off = psdOffset(pr)
-            [~,~,~,~,off] = spotprog.coneOffset(pr.K1);
+            [~,~,~,off] = spotprog.coneOffset(pr.K1);
+            off = off + pr.freeOffset;
         end
         
         function off = posCstrOffset(pr)
-            [~,off] = spotprog.coneOffset(pr.K2);
+            [off] = spotprog.coneOffset(pr.K2);
         end
         
         function off = lorCstrOffset(pr)
-            [~,~,off] = spotprog.coneOffset(pr.K2);
+            [~,off] = spotprog.coneOffset(pr.K2);
         end
         
         function off = rlorCstrOffset(pr)
-            [~,~,~,off] = spotprog.coneOffset(pr.K2);
+            [~,~,off] = spotprog.coneOffset(pr.K2);
         end
         
         function off = psdCstrOffset(pr)
-            [~,~,~,~,off] = spotprog.coneOffset(pr.K2);
+            [~,~,~,off] = spotprog.coneOffset(pr.K2);
         end
         
                 
@@ -217,7 +221,7 @@ classdef spotprog
         end
         
         function nf = numFree(pr)
-            nf = pr.coneDim(pr.K1);
+            nf = pr.freeNo;
         end
         
         function v = decToVar(prog,x)
@@ -242,18 +246,18 @@ classdef spotprog
         end
         
         function [pr,z,y] = withCone(pr,e,K)
-            [nf,nl,nq,nr,ns]=spotprog.coneDim(K);
-            [of,ol,oq,or,os]=spotprog.coneOffset(K);
-            if nf+nl+nq+nr+ns ~= size(e,1)
+            [nl,nq,nr,ns]=spotprog.coneDim(K);
+            [ol,oq,or,os]=spotprog.coneOffset(K);
+            if nl+nq+nr+ns ~= size(e,1)
                 error('Cone size does not match dim.');
             end
 
             if size(e,2) == 0, return; end
             
-            if nl > 0, [pr,zl,yl] = pr.withPos(e(1:of));
+            if nl > 0, [pr,zl,yl] = pr.withPos(e(1:ol));
             else, zl = []; yl = []; end
 
-            if nq > 0, [pr,zq,yq] = pr.withLor(e(of+(1:oq)),K.q);
+            if nq > 0, [pr,zq,yq] = pr.withLor(e(ol+(1:oq)),K.q);
             else, zq = []; yq = []; end
 
             if nr > 0, [pr,zr,yr] = pr.withRLor(e(oq+(1:or)),K.r);
@@ -342,7 +346,7 @@ classdef spotprog
                 error('m must be a non-negative integer scalar.');
             end
             nf = pr.freeOffset;
-            pr.K1.f = pr.K1.f + n*m;
+            pr.freeNo = pr.freeNo + n*m;
             [pr,v] = pr.insertVariables(nf,n*m);
             v = reshape(v,n,m);
         end
@@ -438,18 +442,18 @@ classdef spotprog
             pobj = msspoly(pobj);
 
             pr = prog.primalize();
-            [nf] = spotprog.coneDim(pr.K1);
+            nf = pr.numFree;
             [P,A,b,c,K,d] = pr.toSedumi(pobj);
             
             % Enable removal of redundant equations.
-            [feas,E,F,g,U,V,w,Ad,bd,cd,Kd] = spot_sdp_remove_redundant_eqs(A,b,c,K);
+            %[feas,E,F,g,U,V,w,Ad,bd,cd,Kd] = spot_sdp_remove_redundant_eqs(A,b,c,K);
 
             % Enable basic facial reduction.
-            [x,y,z,info] = solver(Ad,bd,cd,Kd);
+            [x,y,z,info] = solver(A,b,c,K);
 
-            x = E\(F*x+g);
-            y = U\(V*y+w);
-            z = c - A'*y;
+            % x = E\(F*x+g);
+            % y = U\(V*y+w);
+            % z = c - A'*y;
 
             xsol = P*x;
             zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
@@ -482,7 +486,8 @@ classdef spotprog
                 projMap(ssize(i)) = sparse((1:length(I))',I,ones(size(I)),length(I),n^2);
             end
             
-            [nf,nl,nq,nr,ns] = spotprog.coneDim(pr.K1);
+            nf = pr.numFree;
+            [nl,nq,nr,ns] = spotprog.coneDim(pr.K1);
 
             projs = cell(1,length(pr.K1.s));
             for i = 1:length(pr.K1.s)
@@ -499,6 +504,7 @@ classdef spotprog
             b = pr.b;
             P = blkdiag(speye(nf+nl+nq+nr),P);
             K = pr.K1;
+            K.f = pr.numFree;
         end
     end
 end
