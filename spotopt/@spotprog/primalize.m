@@ -5,14 +5,12 @@ function [pr] = toPrimalWithFree(pr)
     g = pr.g;
     F = pr.F;
     coneCstrVar = pr.coneCstrVar;
-    dualCstrVar = pr.dualCstrVar;
     coneToCstrVar = pr.coneToCstrVar;
     K2 = pr.K2;
             
     pr.g = [];
     pr.F = [];
     pr.coneCstrVar = [];
-    pr.dualCstrVar = [];
     pr.coneToCstrVar = [];
     pr.K2 = struct('l',0,'q',[],'r',[],'s',[]);
             
@@ -51,21 +49,14 @@ function [pr] = toPrimalWithFree(pr)
     pr.coneVar = [ coneVar ; coneCstrVar ];
     pr.coneToVar = [ coneToVar ; coneToCstrVar ];
     
-    % Next we need to square away the equations.
-    [~,Ivar] = sort(coneToVar);
-    [~,Icstr] = sort(coneToCstrVar);
-    [Anew,bnew] = spot_decomp_linear(g-F*[pr.freeVar;coneVar(Ivar)]-coneCstrVar(Icstr),[pr.freeVar;pr.coneVar]);
-    
-    [~,I] = sort(pr.coneToVar);
-    
-    nf = pr.numFree;
-    
-    pr.A = [ pr.A ; Anew(:,[(1:nf)';nf+I])];
-    pr.b = [ pr.b ; bnew];
-    pr.dualVar = [ pr.dualVar ; dualCstrVar ];
-    
     pr.K1.l = pr.K1.l + K2.l;
     pr.K1.q = [ pr.K1.q  K2.q];
     pr.K1.r = [ pr.K1.r  K2.r];
     pr.K1.s = [ pr.K1.s  K2.s];
+    
+    % Next we need to square away the equations.
+    [~,Ivar] = sort(coneToVar);
+    [~,Icstr] = sort(coneToCstrVar);
+    
+    pr = pr.withEqs(g-F*[pr.freeVar;coneVar(Ivar)]-coneCstrVar(Icstr));
 end

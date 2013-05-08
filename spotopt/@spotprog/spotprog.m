@@ -39,7 +39,6 @@ classdef spotprog
         dualVar = [];
         
         coneCstrVar = [];
-        dualCstrVar = [];
         coneToCstrVar = [];
         
         A = [];
@@ -52,6 +51,10 @@ classdef spotprog
     end
     
     methods (Static)
+        function x = varToDec(v,ordering)
+            [~,I] = sort(ordering);
+            x = v(I);
+        end
         function opt = defaultOptions()
             opt = struct('dualize',0);
         end
@@ -106,8 +109,8 @@ classdef spotprog
     methods ( Access = private )        
         function n = numVar(pr)
             n = length(pr.coneVar) + length(pr.coneCstrVar) + ...
-                length(pr.dualVar) + length(pr.dualCstrVar) + ...
-                length(pr.freeVar);
+                length(pr.dualVar) + length(pr.freeVar);
+                
         end
 
 
@@ -184,7 +187,7 @@ classdef spotprog
                      pr.g(off+1:end,:)];
         end
         
-        function [pr,z,y] = addConstraintExpr(pr,off,e)
+        function [pr,z] = addConstraintExpr(pr,off,e)
             [Fnew,gnew] = spot_decomp_linear(-e(:),[pr.freeVar;pr.coneVar]);
             [~,I] = sort(pr.coneToVar);
             nf = pr.numFree;
@@ -193,11 +196,6 @@ classdef spotprog
             n = size(Fnew,1);
 
             z = msspoly(pr.varName,[n pr.numVar]);
-            y = msspoly(pr.varName,[n pr.numVar+length(z)]);
-            
-            pr.dualCstrVar = [ pr.dualCstrVar(1:off) 
-                               y 
-                               pr.dualCstrVar(off+1:length(pr.dualCstrVar))];
             
             pr.coneCstrVar = [pr.coneCstrVar ; z];
             shift = pr.coneToCstrVar > off;
@@ -222,10 +220,6 @@ classdef spotprog
             nf = length(pr.freeVar);
         end
         
-        function x = varToDec(prog,v)
-            [~,I] = sort(prog.coneToVar);
-            x = v(I);
-        end
         
         function v = decToVar(prog,x)
             v = [ x(1:prog.numFree) 
@@ -248,7 +242,7 @@ classdef spotprog
 
         end
         
-        function [pr,z,y] = withCone(pr,e,K)
+        function [pr,z] = withCone(pr,e,K)
             [nl,nq,nr,ns]=spotprog.coneDim(K);
             [ol,oq,or,os]=spotprog.coneOffset(K);
             if nl+nq+nr+ns ~= size(e,1)
@@ -275,15 +269,15 @@ classdef spotprog
         end
         
         
-        function [pr,z,y] = withPos(pr,e)
+        function [pr,z] = withPos(pr,e)
             n = prod(size(e));
             off = pr.posCstrOffset;
             pr.K2.l = pr.K2.l + n;
             
-            [pr,z,y] = addConstraintExpr(pr,off,e);
+            [pr,z] = addConstraintExpr(pr,off,e);
         end
         
-        function [pr,z,y] = withLor(pr,e,dim)
+        function [pr,z] = withLor(pr,e,dim)
             if nargin < 3,
                 dim = size(e,1);
             end
@@ -293,10 +287,10 @@ classdef spotprog
             off = pr.lorCstrOffset;
             pr.K2.q = [pr.K2.q dim];
             
-            [pr,z,y] = addConstraintExpr(pr,off,e);
+            [pr,z] = addConstraintExpr(pr,off,e);
         end
        
-        function [pr,z,y] = withRLor(pr,e,dim)
+        function [pr,z] = withRLor(pr,e,dim)
             if nargin < 3,
                 dim = size(e,1);
             end
@@ -306,10 +300,10 @@ classdef spotprog
             off = pr.rlorCstrOffset;
             pr.K2.r = [pr.K2.r dim];
             
-            [pr,z,y] = addConstraintExpr(pr,off,e);
+            [pr,z] = addConstraintExpr(pr,off,e);
         end
         
-        function [pr,z,y] = withBlkPSD(pr,e,dim)
+        function [pr,z] = withBlkPSD(pr,e,dim)
             if nargin < 3,
                 [dim,v] = spotprog.psdNoToDim(size(e,1));
                 if v,
@@ -329,14 +323,14 @@ classdef spotprog
             off = pr.psdCstrOffset;
             pr.K2.s = [pr.K2.s spotprog.psdNoToDim(no)];
             
-            [pr,z,y] = pr.addConstraintExpr(off,e);
+            [pr,z] = pr.addConstraintExpr(off,e);
         end
         
-        function [pr,z,y] = withPSD(pr,e)
+        function [pr,z] = withPSD(pr,e)
             if size(e,1) ~= size(e,2)
                 error('Arugment must be square.');
             end
-            [pr,z,y] = pr.withBlkPSD(mss_s2v(e));
+            [pr,z] = pr.withBlkPSD(mss_s2v(e));
             z = mss_v2s(z);
         end
         
