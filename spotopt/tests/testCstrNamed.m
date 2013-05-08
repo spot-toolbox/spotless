@@ -1,4 +1,4 @@
-function [] = testCstrNamed(varargin)
+function score = testCstrNamed(varargin)
     names = varargin;
     pr = spotsosprog;
     
@@ -8,10 +8,10 @@ function [] = testCstrNamed(varargin)
     tol = zeros(n,1);
     
     for i = 1:n
-        fn = str2func(['testCstr/' names{i}]);
+        fn = str2func([names{i}]);
         [pr,obj(i),zero(i),tol(i)] = fn(pr);
     end
     sol = pr.minimize(sum(obj));
-    [ sol.eval(zero) tol]
+    score=double([ sol.eval(zero) tol]);
     
 end
