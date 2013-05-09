@@ -57,6 +57,15 @@ function [pr] = toPrimalWithFree(pr)
     % Next we need to square away the equations.
     [~,Ivar] = sort(coneToVar);
     [~,Icstr] = sort(coneToCstrVar);
-    
-    pr = pr.withEqs(g-F*[pr.freeVar;coneVar(Ivar)]-coneCstrVar(Icstr));
+
+    a1 = g;
+    a2 = -F*[pr.freeVar;coneVar(Ivar)];
+    a3 = -coneCstrVar(Icstr);
+    expr = zeros(size(F,1),1);
+    if ~isempty(a1), expr = expr + a1; end
+    if ~isempty(a2), expr = expr + a2; end
+    if ~isempty(a3), expr = expr + a3; end
+    if ~isempty(expr),
+        pr = pr.withEqs(expr);
+    end
 end
