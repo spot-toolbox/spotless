@@ -1,4 +1,5 @@
-function score = testCstrNamed(varargin)
+function [score,sol,dsol] = testCstrNamed(varargin)
+    solver = @spot_sedumi;
     names = varargin;
     pr = spotsosprog;
     
@@ -11,7 +12,15 @@ function score = testCstrNamed(varargin)
         fn = str2func([names{i}]);
         [pr,obj(i),zero(i),tol(i)] = fn(pr);
     end
-    sol = pr.minimize(sum(obj));
-    score=double([ sol.eval(zero) tol]);
+    
+    pobj = sum(obj);
+    sol = pr.minimize(pobj,solver);
+    
+    dsol = pr.minimize(pobj,solver,struct('dualize',1));
+    
+    % [dl,dobj] = pr.toDual(pobj);
+    % dsol = dl.minimize(-dobj,solver,struct('dualize',1));
+
+    score=double([ sol.eval(zero) dsol.eval(zero) tol]);
     
 end
