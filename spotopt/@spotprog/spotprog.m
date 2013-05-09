@@ -98,6 +98,30 @@ classdef spotprog
             ns = sum(spotprog.psdDimToNo(K.s));
         end
         
+        function Pdiag = coneInnerProduct(K)
+            [nl,nq,nr,ns] = spotprog.coneDim(K);
+            
+            Pdiag = ones(nl+nq+nr,1);
+            
+            ipMap = containers.Map('KeyType','uint32','ValueType','any');
+            ssize = unique(K.s);
+            for i = 1:length(ssize)
+                n = ssize(i);
+                I = repmat((1:n)',1,n);
+                J = I';
+                ipMap(n)=ones(nchoosek(n+1,2),1)+mss_s2v(I~=J);
+            end
+            
+            ips = cell(1,length(K.s));
+            for i = 1:length(K.s)
+                ips{i} = ipMap(K.s(i));
+            end
+            if isempty(ips), d = [];
+            else, d = vertcat(ips{:});
+            end
+            Pdiag = [ Pdiag ; d];
+        end
+        
         function [ol,oq,or,os] = coneOffset(K)
             ol = K.l;
             oq = ol+sum(K.q);
@@ -236,7 +260,7 @@ classdef spotprog
         end
         
         function y = dualEqVariables(pr)
-            y = msspoly(pr.eqDualName,pr.numEquations);
+            y = pr.dualVar;
         end
         
         function [pr,y] = withEqs(pr,e)
@@ -459,11 +483,13 @@ classdef spotprog
                            'Please write your program in standard ' ...
                            'dual form.']);
                 end
-                [dl,dobj] = pr.toDual(pobj);
-                [P,A,b,c,K,d] = dl.toSedumi(dobj);
+                [dl,dobj] = prog.toDual(pobj);
+                [P,A,b,c,K,d] = dl.toSedumi(-dobj);
                 [x,y,z,info] = solver(A,b,c,K);
-                keyboard
-                % What to do here?
+                nf = dl.numFree;
+                xsol = P*x;
+                zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
+                sol = spotprogsol(dl,-dobj,xsol,y,zsol,info,1);
             else
                 pr = prog.primalize();
                 nf = pr.numFree;
@@ -471,7 +497,7 @@ classdef spotprog
 
                 % Enable basic facial reduction.
                 [x,y,z,info] = solver(A,b,c,K);
-                
+
                 xsol = P*x;
                 zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
                 
@@ -521,7 +547,7 @@ classdef spotprog
             
             c = [ c1 
                   c2(1:nl+nq+nr)
-                  P'*c2((nl+nq+nr)+(1:ns))];
+                  P'*c2((nl+nq+nr)+(1:ns),:)];
             
             b = pr.b;
             P = blkdiag(speye(nf+nl+nq+nr),P);

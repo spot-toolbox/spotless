@@ -13,12 +13,12 @@ classdef spotprogsol
         info = struct();
         prog = [];
         objective = [];
-        
+        dualize = 0;
         variables = [];
     end
     
     methods
-        function sol = spotprogsol(prog,objective,x,y,z,info)
+        function sol = spotprogsol(prog,objective,x,y,z,info,dualize)
             if ~prog.isPrimalWithFree()
                 error(['Solutions must come from primal form with ' ...
                        'free variables right now.']);
@@ -29,20 +29,35 @@ classdef spotprogsol
             sol.z = z;
             sol.info = info;
             sol.objective = objective;
+            if nargin < 7, dualize = 0; end
+            sol.dualize = dualize;
         end
         
         function err = dimacs(sol)
             [P,A,b,c,K,d] = sol.prog.toSedumi(sol.objective);
             err = spot_sdp_dimacs(A,b,c,K,P'*sol.x,sol.y,P'*sol.z);
         end
-        
+
         function e = eval(sol,expr)
+           if sol.dualize, e = sol.solDualEval(expr);
+           else, e = sol.solPrimalEval(expr);
+           end
+        end
+        
+        function e = dualEval(sol,expr)
+            if sol.dualize, e = sol.solPrimalEval(expr);
+            else, e = sol.solDualEval(expr);
+            end
+        end        
+    end
+    methods (Access = private)
+        function e = solPrimalEval(sol,expr)
             e = subs(expr,...
                      sol.prog.variables,...
                      sol.prog.decToVar(sol.x));
         end
         
-        function e = dualEval(sol,expr)
+        function e = solDualEval(sol,expr)
             nf = sol.prog.numFree;
             e = subs(expr,...
                      [sol.prog.variables
