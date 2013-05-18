@@ -53,27 +53,6 @@ classdef (InferiorClasses = {?double}) msspoly
     
     methods
         function p=msspoly(x,y,z,a,b)
-        % function p=msspoly(x,y,z)
-        %
-        % constructor for msspoly class object p 
-        % An msspoly object has 3 fields:  n,m,s, and represents a polynomial
-        % p.m-by-p.n matrix P. Each row s(i,:)=[i,j,k1,...,km,d1,...,dm,c] of s
-        % corresponds to a single term c*(v1^d1)*(v2*d2)*...*(vm^dm) in the
-        % (i,j) entry of P, where vi is the variable with number ki
-        % 
-        % with 0 arguments, 
-        %    p is the empty msspoly object: p.n=p.m=0, p.s=[]
-        % with 1 argument 
-        %    (x 'double', 'msspoly', or 'char')
-        %    p is the msspoly conversion of x
-        % with 2 arguments 
-        %    (x single character, y=[], y=a, or y=[a,b], a,b positive integers)
-        %    x is a column vector of different independent variables;
-        %    y=[]: p=x; y=a: p=[x0;...;x{a-1}]; y=[a,b]: p=[x{b};...;x{b+a-1)]
-        % with 3 arguments (x,y positive integers, z an ms-by-ns,
-        %    p.m=x,  p.n=y,  p.s=z
-        
-        % AM 09.01.09
             errname = ['Variable names must match n or Tn where n ' ...
                        'is a string, length(n) in 1:' ...
                        num2str(msspoly.nameLength) ...
