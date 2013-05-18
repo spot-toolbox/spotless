@@ -1,9 +1,15 @@
 classdef spotsosprog < spotprog
     properties
-        sosExpr = [];
+        sosExpr = {};
         indeterminates = msspoly([]);
     end
+
     methods (Access = private)
+        function name = indetName(pr)
+            name = [ pr.name 'x'];
+        end
+        
+        
         function flag = isPolyInIndet(pr,exp)
             mtch = match(pr.indeterminates,decomp(exp));
             flag =  all(mtch ~= 0);
@@ -49,30 +55,7 @@ classdef spotsosprog < spotprog
         % end
     end
     
-    methods (Access = private, Static)
-        function phi = buildGramBasis(expr,decvar)
-            if ~spot_hasSize(expr,[1 1])
-                error('buildGramBasis expects a scalar polynomial.');
-            end
-            
-            [var,pow,M] = decomp(expr);
-            mtch = match(var,decvar);
-            b = 1:length(var);
-            b(mtch(mtch ~= 0)) = [];
-            indet = var(b);
-            
-            if length(indet) == 0
-                phi = 1;
-                return;
-            end
 
-            pow = pow(:,b);
-
-            exponent_m = spot_build_gram_basis(pow);
-    
-            phi = recomp(indet,exponent_m,eye(size(exponent_m,1)));
-        end
-    end
     
     methods (Access = protected)
         function [pr,Q,phi,y,basis] = buildSOSDecompPrimal(pr,expr)
@@ -96,6 +79,120 @@ classdef spotsosprog < spotprog
             [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
             basis = recomp(var,pow,eye(size(pow,1)));
         end
+        
+        function [pr,Q,phi,y,basis] = buildSOSDecompDual(pr,expr)
+            if ~spot_hasSize(expr,[1 1])
+                error('buildSOSDecomp expects a scalar polynomial.');
+            end
+            
+            y = pr.variables;
+            
+            phi = spotsosprog.buildGramBasis(expr,y);
+            
+
+            %  This next code requires that phi be the monomials
+            %
+            %  q in PSD,  C - A(y) in K,   D(y) + E(q) = f.
+            %
+            %  Note E has full row rank.  Pick q = q0 + G1.y + G2.z s.t.:
+            %
+            %  E(q0) = f,   D + E.G1 = 0,   E.G2 = 0.  
+            %
+            %  G2 w/ linearly indep. cols.
+            %
+
+            
+            % Introuduce /dummy/ semidefinite variables.
+            [~,Q] = pr.newPSD(length(phi));            
+            q = mss_s2v(Q);
+            
+            decvar = [y ; q];
+            sosCnst = phi'*Q*phi-expr;
+
+            % A1*y + A2*q = b.
+            A1 = diff(sosCnst,y);
+            A2 = diff(sosCnst,q);
+            b = -subs(sosCnst,[y;q],0*[y;q]);
+            [var,pow,Coeff] = decomp([b A1 A2].');
+            
+            Coeff = Coeff.';
+            
+            f  = Coeff(:,1);
+            D = Coeff(:,1+(1:length(y)));
+            E = Coeff(:,1+length(y)+(1:length(q)));
+        
+            
+            ny = length(y);
+            m = length(f);
+            nq = length(q);
+            
+            %  Now we'll use some of the structure of E.
+            [row,col,s] = find(E);
+            
+            if ~all(col == (1:nq)') || length(unique(row)) ~= m
+                error('Basis assumptions violated for SOS decomposition.');
+            end
+            
+            % Scaling matrix.
+            S = sparse(col,col,1./s,nq,nq);
+            
+            [row,I] = sort(row);
+            S = S(:,I);
+
+            
+            % Find representatives for each column.
+            [rr,ii,~] = unique(row);
+            [~,I] = sort(rr);
+            col_of_Id = col(ii(I));
+            
+            % E(i,col_of_ID(i)) = 1, so setting v(col_of_ID) = b, zeros o.w. makes
+            % (Ev) = b.
+            
+            % Construct the particular solution.
+            q0 = S*sparse(col_of_Id,ones(m,1),f,nq,1);
+            
+            % Construct G1 that is m-by-ny so that D = - E.G1
+            G1 = S*sparse(repmat(col_of_Id,ny,1),...  
+                        reshape(repmat(1:ny,m,1),[],1),...
+                        -D(:),nq,ny);
+            
+            % Construct G2 with (nq - m) linearly independent rows.
+            G2 = speye(nq);
+            
+            % Find when col(i) ~= col(i-1)
+            paired = col_of_Id(row);
+            %paired = [ col(2:end) ; col(end)];
+            
+            G2 = G2 - sparse(paired,col,ones(nq,1),nq,nq);
+            G2(:,col_of_Id) = [];
+            G2 = S*G2;
+            
+            if nq > m
+                [pr,z] = pr.newFree(nq-m);
+                Q = mss_v2s(q0 + G1*y + G2*z);
+
+            else
+                Q = mss_v2s(q0 + G1*y);
+            end
+            pr = pr.withPSD(Q);
+            basis = recomp(var,pow,eye(size(pow,1)));
+        end
+    end
+    
+    methods (Access = private)
+        function [pr,x] = newPrivateIndeterminate(pr,no)
+            x=msspoly(pr.indetName,no);
+            [pr] = pr.withPrivateIndeterminate(x);
+        end
+        
+        function pr = withPrivateIndeterminate(pr,var)
+            [vid,f] = isfree(var);
+            if ~f,
+                error('Indeterminates must be free msspolys.');
+            end
+            skip=match(pr.indeterminates,var);
+            pr.indeterminates = [ pr.indeterminates ; var(skip == 0)];
+        end
     end
     
     methods
@@ -103,6 +200,11 @@ classdef spotsosprog < spotprog
             pr@spotprog(varargin{:});
         end
         function [pr,x] = newIndeterminate(pr,name,number)
+            if nargin < 3, number = 1; end
+            if name(1) == pr.name
+                error(['Indeterminate name conflicts with program ' ...
+                       'name.']);
+            end
             x = msspoly(name,number);
             pr = pr.withIndeterminate(x);
         end
@@ -112,8 +214,15 @@ classdef spotsosprog < spotprog
             if ~f,
                 error('Indeterminates must be free msspolys.');
             end
-            skip=match(pr.indeterminates,var);
-            pr.indeterminates = [ pr.indeterminates ; var(skip == 0)];
+            
+            nm = name(var);
+            for i = 1:length(nm)
+                if nm{1}(1) == pr.name
+                    error(['Indeterminate name conflicts with program ' ...
+                           'name.']);
+                end
+            end
+            pr = withPrivateIndeterminate(pr,var);
         end
         
         function [pr,poly,coeff] = newSOSPoly(pr,basis,n)
@@ -165,9 +274,8 @@ classdef spotsosprog < spotprog
                 error('Expression must be a square non-empty matrix.');
             end
             
-            x = msspoly('x',size(expr,1));
-            expr = anonymize(expr,'y',indet);
-            [pr,tokens] = withSOS(pr,x'*expr*x);
+            [pr,q] = pr.newPrivateIndeterminate(size(expr,1));
+            [pr] = pr.withSOS(q'*expr*q);
         end
         
         function n = numSOS(pr)
@@ -188,18 +296,62 @@ classdef spotsosprog < spotprog
         end
         
         
-        function [sol,log] = minimize(pr,varargin)
-            if nargin < 2, objective = msspoly(0); end
-
-            Q = cell(pr.numSOS,1);
-            phi = cell(pr.numSOS,1);
-            y   = cell(pr.numSOS,1);
-            basis   = cell(pr.numSOS,1);
-            for i = 1:pr.numSOS
-                [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompPrimal(pr.sosExpr(i));
+        function sol = minimize(pr,varargin)
+        %
+        % sol = minimize(pr,pobj,solver,options)
+        %
+            if nargin >= 4,
+                options = varargin{3};
+            else
+                options = spotprog.defaultOptions;
+            end
+            
+            if options.dualize
+                Q = cell(pr.numSOS,1);
+                phi = cell(pr.numSOS,1);
+                y   = cell(pr.numSOS,1);
+                basis   = cell(pr.numSOS,1);
+                for i = 1:pr.numSOS
+                    [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompDual(pr.sosExpr(i));
+                end
+                
+                sol = minimize@spotprog(pr,varargin{:});
+            else
+                Q = cell(pr.numSOS,1);
+                phi = cell(pr.numSOS,1);
+                y   = cell(pr.numSOS,1);
+                basis   = cell(pr.numSOS,1);
+                for i = 1:pr.numSOS
+                    [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompPrimal(pr.sosExpr(i));
+                end
+                
+                sol = minimize@spotprog(pr,varargin{:});
+            end
+        end
+    end
+    
+    methods (Access = private, Static)
+        function phi = buildGramBasis(expr,decvar)
+            if ~spot_hasSize(expr,[1 1])
+                error('buildGramBasis expects a scalar polynomial.');
+            end
+            
+            [var,pow,M] = decomp(expr);
+            mtch = match(var,decvar);
+            b = 1:length(var);
+            b(mtch(mtch ~= 0)) = [];
+            indet = var(b);
+            
+            if length(indet) == 0
+                phi = 1;
+                return;
             end
 
-            sol = minimize@spotprog(pr,varargin{:});
+            pow = pow(:,b);
+
+            exponent_m = spot_build_gram_basis(pow);
+    
+            phi = recomp(indet,exponent_m,eye(size(exponent_m,1)));
         end
     end
 end
