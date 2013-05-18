@@ -56,19 +56,13 @@ classdef spotprog
             x = v(I);
         end
         function opt = defaultOptions()
-            opt = struct('dualize',0);
+            opt = spot_sdp_default_options();
         end
         function n = psdDimToNo(d)
-            n=(d+1).*d/2;
+            n = spot_psdDimToNo(d);
         end
         function [d,err] = psdNoToDim(n)
-            d=round((sqrt(1+8*n)-1)/2);
-            if spotprog.psdDimToNo(d) ~= n
-                d = NaN;
-                err = 1;
-            else
-                err = 0;
-            end
+            [d,err] = spot_psdNoToDim(n);
         end
         
         function flag = isScalarDimension(n)
@@ -485,7 +479,8 @@ classdef spotprog
                 end
                 [dl,dobj] = prog.toDual(pobj);
                 [P,A,b,c,K,d] = dl.toSedumi(-dobj);
-                [x,y,z,info] = solver(A,b,c,K);
+                
+                [x,y,z,info] = solver(A,b,c,K,options);
                 nf = dl.numFree;
                 xsol = P*x;
                 zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
@@ -496,7 +491,7 @@ classdef spotprog
                 [P,A,b,c,K,d] = pr.toSedumi(pobj);
 
                 % Enable basic facial reduction.
-                [x,y,z,info] = solver(A,b,c,K);
+                [x,y,z,info] = solver(A,b,c,K,options);
 
                 xsol = P*x;
                 zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
