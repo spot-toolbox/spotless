@@ -17,14 +17,14 @@ function errors = spot_sdp_dimacs(A,b,c,K,x,y,z)
         for i = 1:length(K.q)
             n = K.q(i);
             if n == 0, continue; end
-            lm = min(x(off+1)^2-sum(x(off+2:n).^2),lm);
+            lm = min(x(off+1)^2-sum(x(off+(2:n)).^2),lm);
             off = off + K.q(i);
         end
         
         for i = 1:length(K.r)
             n = K.r(i);
             if n == 0, continue; end
-            lm = min(2*x(off+1)*x(off+2)-sum(x(off+3:n).^2),lm);
+            lm = min(2*x(off+1)*x(off+2)-sum(x(off+(3:n)).^2),lm);
             off = off + K.r(i);
         end
         

@@ -1,5 +1,9 @@
-function [x,y,z,info] = spot_sedumi(A,b,c,K)
-    [x,y,s_info] = sedumi(A,b,c,K,struct('fid',0));
+function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
+    if nargin < 5, options = spot_sdp_default_options(); end
+    
+    sedumi_options = struct('fid',options.verbose);
+    
+    [x,y,s_info] = sedumi(A,b,c,K,sedumi_options);
     z = spot_sdp_cone_symm(c - A'*y,K);
     
     info.primalInfeasible = s_info.pinf;
