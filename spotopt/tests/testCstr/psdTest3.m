@@ -9,5 +9,5 @@ function [pr,obj,zero,tol] = psdTest3(pr)
     obj = f;
     
     zero = z(1,2) - (-1);
-    tol  = 1e-8;
+    tol  = 5e-8;
 end

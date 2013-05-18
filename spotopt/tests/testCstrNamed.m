@@ -1,5 +1,5 @@
-function [score,sol,dsol] = testCstrNamed(varargin)
-    solver = @spot_sedumi;
+function [score,sol,dsol,err] = testCstrNamed(varargin)
+    solver = @spot_mosek;
     names = varargin;
     pr = spotsosprog;
     
@@ -16,11 +16,11 @@ function [score,sol,dsol] = testCstrNamed(varargin)
     pobj = sum(obj);
     sol = pr.minimize(pobj,solver);
     
-    dsol = pr.minimize(pobj,solver,struct('dualize',1));
-    
-    % [dl,dobj] = pr.toDual(pobj);
-    % dsol = dl.minimize(-dobj,solver,struct('dualize',1));
+    score=double([ sol.eval(zero) tol]);
+    % opt = spot_sdp_default_options();
+    % opt.dualize = 1;
+    % dsol = pr.minimize(pobj,solver,opt);
 
-    score=double([ sol.eval(zero) dsol.eval(zero) tol]);
+    %score=double([ sol.eval(zero) dsol.eval(zero) tol]);
     
 end
