@@ -11,6 +11,8 @@ classdef spotprogsol
         y = [];
         z = [];
         info = struct();
+        primalInfeasible = [];
+        dualInfeasible = [];
         prog = [];
         objective = [];
         dualize = 0;
@@ -28,6 +30,8 @@ classdef spotprogsol
             sol.y = y;
             sol.z = z;
             sol.info = info;
+            sol.primalInfeasible = info.primalInfeasible;
+            sol.dualInfeasible = info.dualInfeasible;
             sol.objective = objective;
             if nargin < 7, dualize = 0; end
             sol.dualize = dualize;
@@ -35,10 +39,14 @@ classdef spotprogsol
         
         function err = dimacs(sol)
             [P,A,b,c,K,d] = sol.prog.toSedumi(sol.objective);
-            err = spot_sdp_dimacs(A,b,c,K,P'*sol.x,sol.y,P'*sol.z);
+            nf = sol.prog.numFree;
+            err = spot_sdp_dimacs(A,b,c,K,P'*sol.x,sol.y,[ zeros(nf,1) ; P(nf+1:end,nf+1:end)'*sol.z]);
         end
 
         function e = eval(sol,expr)
+            if sol.primalInfeasible,
+                error('Cannot evaluate: primal infeasible.'); 
+            end
            if sol.dualize, e = sol.solDualEval(expr);
            else, e = sol.solPrimalEval(expr);
            end
@@ -52,12 +60,20 @@ classdef spotprogsol
     end
     methods (Access = private)
         function e = solPrimalEval(sol,expr)
+            if sol.primalInfeasible,
+                error('Cannot evaluate: primal infeasible.'); 
+            end
+
             e = subs(expr,...
                      sol.prog.variables,...
                      sol.prog.decToVar(sol.x));
         end
         
         function e = solDualEval(sol,expr)
+            if sol.dualInfeasible,
+                error('Cannot evaluate: dual infeasible.'); 
+            end
+
             nf = sol.prog.numFree;
             e = subs(expr,...
                      [sol.prog.variables
