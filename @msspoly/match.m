@@ -12,7 +12,7 @@ function ik=match(x,y)
 %   b(i) = k if y(i) = x(k) for some k, 0 otherwise.
 %
 
-[f,xn] = msspoly.isfreemsspoly(x);
+[f,xn] = msspoly.isfreemsspoly(msspoly(x));
 
 if ~f, error('First argument must be free msspoly.'); end
 if nargin < 2, error('Two arguments required.'); end
