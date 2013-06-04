@@ -1,6 +1,10 @@
+% TODO:
+%  -- test basis for dep. on indeterminates only.
+%
 classdef spotsosprog < spotprog
     properties
         sosExpr = {};
+        sosTrigExpr = {};
         indeterminates = msspoly([]);
     end
 
@@ -238,7 +242,23 @@ classdef spotsosprog < spotprog
                       'be linear in decision variables.']);
             end
             tokens = length(pr.sosExpr) + (1:prod(size(expr)));
-            pr.sosExpr = [ pr.sosExpr ; expr(:)];
+            pr.sosExpr = [ pr.sosExpr ; expr(:) ];
+        end
+        
+        function [pr] = withSOSMatrix(pr,expr)
+            [lindec,indet] = pr.isRealPolyLinearInDec(expr);
+            if ~lindec
+                error(['Coefficients must be real, indeterminates ' ...
+                       'non-trigonometric, and expression must ' ...
+                      'be linear in decision variables.']);
+            end
+            
+            if size(expr,1) ~= size(expr,2) || size(expr,1) == 0
+                error('Expression must be a square non-empty matrix.');
+            end
+            
+            [pr,q] = pr.newPrivateIndeterminate(size(expr,1));
+            [pr] = pr.withSOS(q'*expr*q);
         end
         
         function [pr] = withPolyEqs(pr,expr)
@@ -262,24 +282,13 @@ classdef spotsosprog < spotprog
             basis = monom(J);
         end
         
-        function [pr] = withSOSMatrix(pr,expr)
-            [lindec,indet] = pr.isRealPolyLinearInDec(expr);
-            if ~lindec
-                error(['Coefficients must be real, indeterminates ' ...
-                       'non-trigonometric, and expression must ' ...
-                      'be linear in decision variables.']);
-            end
-            
-            if size(expr,1) ~= size(expr,2) || size(expr,1) == 0
-                error('Expression must be a square non-empty matrix.');
-            end
-            
-            [pr,q] = pr.newPrivateIndeterminate(size(expr,1));
-            [pr] = pr.withSOS(q'*expr*q);
-        end
         
         function n = numSOS(pr)
             n = length(pr.sosExpr);
+        end
+        
+        function n = numTrigSOS(pr)
+            n = length(pr.sosTrigExpr);
         end
         
         function [pr,poly,coeff] = newFreePoly(pr,basis,n)
@@ -307,6 +316,7 @@ classdef spotsosprog < spotprog
             end
             
             if options.dualize
+                error('Dualization not supported.');
                 Q = cell(pr.numSOS,1);
                 phi = cell(pr.numSOS,1);
                 y   = cell(pr.numSOS,1);
@@ -317,12 +327,18 @@ classdef spotsosprog < spotprog
                 
                 sol = minimize@spotprog(pr,varargin{:});
             else
-                Q = cell(pr.numSOS,1);
-                phi = cell(pr.numSOS,1);
-                y   = cell(pr.numSOS,1);
-                basis   = cell(pr.numSOS,1);
+                Q = cell(pr.numSOS+pr.numTrigSOS,1);
+                phi = cell(pr.numSOS+pr.numTrigSOS,1);
+                y   = cell(pr.numSOS+pr.numTrigSOS,1);
+                basis   = cell(pr.numSOS+pr.numTrigSOS,1);
                 for i = 1:pr.numSOS
                     [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompPrimal(pr.sosExpr(i));
+                end
+                
+                for i = 1:pr.numTrigSOS
+                    ii = pr.numSOS + pr.numTrigSOS;
+                    t = pr.sosTrigExpr{i};
+                    [pr,Q{ii},phi{ii},y{ii},basis{ii}] = pr.buildSOSTrigDecomp(t{:});
                 end
                 
                 sol = minimize@spotprog(pr,varargin{:});
