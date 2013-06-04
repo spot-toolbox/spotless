@@ -48,7 +48,6 @@ if s % b is simple.
     var = p.var;
     pow   = p.pow;
     coeff = p.coeff;
-    
     % Where b is a double, compute corresponding power and remove.
     if ~isempty(cnsti) && ~isempty(p.pow)
         term = msspoly.match_list(avar(cnsti),var);
@@ -57,7 +56,7 @@ if s % b is simple.
         cnsts = bcnst(term(term~=0));
         cnsts(pow(term~=0) < 0) = conj(cnsts(pow(term~=0) < 0));
         
-        mul(term~=0) = cnsts.^abs(pow(term~=0));
+        mul(term~=0) = cnsts.^reshape(abs(pow(term~=0)),[],size(cnsts,2));
         pow(term~=0) = 0;
         coeff = coeff.*prod(mul,2);
     end
