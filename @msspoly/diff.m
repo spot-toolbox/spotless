@@ -58,13 +58,15 @@ else
         var = p.var(i,:);
         coeff = p.coeff(i).*p.pow(msk);
         pow = p.pow(i,:);
-        ind = sub2ind(size(pow),(1:length(i))',j);
+        
+        
+        ind = sub2ind(size(pow),(1:length(i))',j(:));
     
         pow(ind) = pow(ind) - 1;
-    
+        
         J = msspoly([size(p,1) length(xn)],...
-                    [ p.sub(i,1) match(msk) ],...
-                    var,pow,coeff);
+                    [ p.sub(i,1) reshape(match(msk),[],1) ],...
+                    var,pow,coeff(:));
     end
 end
 
