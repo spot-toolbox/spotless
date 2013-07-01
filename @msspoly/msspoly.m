@@ -73,6 +73,7 @@ classdef (InferiorClasses = {?double}) msspoly
                     p.var = zeros(size(p.sub,1),0);
                     p.pow = zeros(size(p.sub,1),0);
                     p.coeff = cc(:); 
+                    p = p.make_canonical();
                   case 'char',
                     p = msspoly(x,1);
                   otherwise
@@ -171,7 +172,7 @@ classdef (InferiorClasses = {?double}) msspoly
                 m=mx+my;
                 g=sortrows([[x  -(1:mx)'];[y (1:my)']]);
                 g=[[g(1:m-1,1)==g(2:m,1);0] g(:,2)];
-                ik=mss_gset(g);
+                ik=spot_gset(g);
             end
         end
         
@@ -203,7 +204,7 @@ classdef (InferiorClasses = {?double}) msspoly
         end
         
         function msk = isTrigId(vs)
-            msk = mod(vs,2) == 1;
+            msk = logical(mod(vs,2));% == 1;
         end
         
         function n=name_to_id(ch,m)
@@ -382,29 +383,41 @@ classdef (InferiorClasses = {?double}) msspoly
         % Assumes that check_dimensions returns 0.
         % Tests the contents of the internal representation
         % for type consistency.
-            [flg,emsg] = check_dimensions(p);
-            if flg 
-                return;
-            end
-            emsg = [];
-            if ~spot_isIntGE(p.pow,-Inf)
-                emsg = 'pow must be integers.';
-            elseif any((p.pow < 0) & ~msspoly.isTrigId(p.var))
-                emsg = ['negative powers found for non-trigonometric ' ...
-                        'variables'];
-            elseif ~spot_isIntGE(p.var,0) % Strengthen to test valid var. names.
-                emsg = 'var must be non-negative integers.';
-            elseif ~spot_isIntGE(p.sub,1)
-                emsg = 'sub must be positive integers';
-            elseif any(p.sub(:,1) > p.dim(1)) ||...
-                    any(p.sub(:,2) > p.dim(2))
-                emsg = 'sub do not lie in legal range for dimensions.';
-            elseif ~all(isfinite(p.coeff) | ~isreal(p.coeff))
-                emsg = ['coeff must not be NaN/Inf/Complex ' ...
-                        'numbers.'];
+            
+            [errno,flg] = spot_mex_msspoly_check_canonical(p.dim,p.sub,...
+                                                         p.pow,p.var,...
+                                                         p.coeff);
+            
+            if flg
+                emsg = ['msspoly internal check failed: errno ' ...
+                        num2str(errno) ', see spot_mex_msspoly_check_canonical.'];
+            else
+                emsg = '';
             end
             
-            flg = ~isempty(emsg);
+            % [flg,emsg] = check_dimensions(p);
+            % if flg 
+            %     return;
+            % end
+            % emsg = [];
+            % if ~spot_isIntGE(p.pow,-Inf)
+            %     emsg = 'pow must be integers.';
+            % elseif any((p.pow < 0) & ~msspoly.isTrigId(p.var))
+            %     emsg = ['negative powers found for non-trigonometric ' ...
+            %             'variables'];
+            % elseif ~spot_isIntGE(p.var,0) % Strengthen to test valid var. names.
+            %     emsg = 'var must be non-negative integers.';
+            % elseif ~spot_isIntGE(p.sub,1)
+            %     emsg = 'sub must be positive integers';
+            % elseif any(p.sub(:,1) > p.dim(1)) ||...
+            %         any(p.sub(:,2) > p.dim(2))
+            %     emsg = 'sub do not lie in legal range for dimensions.';
+            % elseif ~all(isfinite(p.coeff) | ~isreal(p.coeff))
+            %     emsg = ['coeff must not be NaN/Inf/Complex ' ...
+            %             'numbers.'];
+            % end
+            
+            % flg = ~isempty(emsg);
         end
 
         
@@ -426,38 +439,54 @@ classdef (InferiorClasses = {?double}) msspoly
         %
         %  - The rows of [ p.sub p.var p.pow ] are unique.
 
-            [flg,emsg] = check_values(p);
-            if flg
-                return;
+            % [flg,emsg] = check_values(p);
+            % if flg
+            %     return;
+            % end
+            
+            % E = size(p.sub,1);
+            % v = size(p.pow,2);
+            % emsg = [];
+            
+            % if any(p.coeff == 0)
+            %     emsg = 'Zero coefficients found.';
+            % elseif v > 0
+            %     if any(any(p.var(:,1:v-1) - p.var(:,2:v) < 0))
+            %         emsg = 'var is not sorted row-wise.';
+            %     elseif any((p.var(:,1:v-1) ~= 0 ) & ...
+            %                (p.var(:,1:v-1) == p.var(:,2:v)))
+            %         emsg = 'var has repeated entries';
+            %     elseif any(p.var(:) == 0 & p.pow(:) ~= 0)
+            %         emsg = 'pow non-zero for some zero in var';
+            %     elseif size(p.pow,1) ~= 0 && any(all(p.pow == 0))
+            %         emsg = 'pow has a zero column';
+            %     end
+            % end
+            % if E > 0 % Question to answer, how should this
+            %                  % be sorted?
+            %     if any(p.sub(1:end-1,1) > p.sub(2:end,1)) |...
+            %             any((p.sub(1:end-1,1) == p.sub(2:end,1)) &...
+            %                 (p.sub(1:end-1,2) > p.sub(2:end,2)))
+            %         emsg = ['sub not sorted in increasing ' ...
+            %                 'order.'];
+            %     end
+            % end
+
+            % flg = ~isempty(emsg);
+            
+            errno = spot_mex_msspoly_check_canonical(p.dim,p.sub,...
+                                                      p.pow,p.var,...
+                                                      p.coeff);
+            
+            if errno ~= 0
+                flg = 1;
+                emsg = ['msspoly not canonical: errno is ' ...
+                        num2str(errno) '. See spot_mex_msspoly_check_canonical.'];
+            else
+                flg = 0;
+                emsg = [];
             end
             
-            E = size(p.sub,1);
-            v = size(p.pow,2);
-            emsg = [];
-            
-            if any(p.coeff == 0)
-                emsg = 'Zero coefficients found.';
-            elseif v > 0
-                if any(any(p.var(:,1:v-1) - p.var(:,2:v) < 0))
-                    emsg = 'var is not sorted row-wise.';
-                elseif any((p.var(:,1:v-1) ~= 0 ) & ...
-                           (p.var(:,1:v-1) == p.var(:,2:v)))
-                    emsg = 'var has repeated entries';
-                elseif any(p.var(:) == 0 & p.pow(:) ~= 0)
-                    emsg = 'pow non-zero for some zero in var';
-                elseif size(p.pow,1) ~= 0 && any(all(p.pow == 0))
-                    emsg = 'pow has a zero column';
-                elseif E > 0 % Question to answer, how should this
-                             % be sorted?
-                    if any(p.sub(1:end-1,1) > p.sub(2:end,1)) |...
-                        any((p.sub(1:end-1,1) == p.sub(2:end,1)) &...
-                            (p.sub(1:end-1,2) > p.sub(2:end,2)))
-                        emsg = ['sub not sorted in increasing ' ...
-                                'order.'];
-                    end
-                end
-            end
-            flg = ~isempty(emsg);
         end
         
         
@@ -498,52 +527,62 @@ classdef (InferiorClasses = {?double}) msspoly
                 q.pow = p.pow(I,:);
                 q.coeff = p.coeff(I,:);
             end
-            
+
             [flg,emsg] = check_values(p);
             if flg
                 error(emsg);
             end
-
-            cnz = p.coeff ~= 0;
-            p = keepEntries(p,cnz);
+            
+            p = keepEntries(p,p.coeff ~= 0);
             
             % Only the zero polynomial is left.
             if size(p.coeff,1) == 0
                 return;
             end
-            
             p.var = p.var.*(p.pow ~= 0); % Remove zero power
                                         % variables, vi^0
-            
             [p.var,I] = sort(p.var,2,'descend'); % Sort for dec. id
             ii = repmat((1:size(p.pow,1))',1,size(p.pow,2));
             % TODO clean up this line below (applies sort to pow)
             p.pow = reshape(p.pow(sub2ind(size(p.pow),ii(:),I(:))),size(p.pow));
-            
+            I = [];
+            ii = [];
             v = size(p.pow,2);
             
             if size(p.var,2) ~= 0
                 % Combine powers for variables repeated in a row.
-                ROW = repmat((1:size(p.var,1))',1,size(p.var,2));
-                v0  = [zeros(size(p.var,1),1) p.var];
-                COL = 1+cumsum(diff(v0,[],2) < 0,2);
+                
+                % Old code for speed test:
+                %ROW = repmat((1:size(p.var,1))',1,size(p.var,2));
+                %v0  = [zeros(size(p.var,1),1) p.var];
+                %COL = 1+cumsum(diff(v0,[],2) < 0,2);
 
-                p.pow = accumarray([ ROW(:) COL(:) ], p.pow(:));
-                p.var = accumarray([ ROW(:) COL(:) ], p.var(:), size(p.pow), @max);
+                %powold = accumarray([ ROW(:) COL(:) ], p.pow(:));
+                %varold = accumarray([ ROW(:) COL(:) ], p.var(:), size(p.pow), @max);
+                [p.pow,p.var,ktest] = ...
+                    spot_mex_msspoly_make_canonical_combine_powers(p.pow,p.var);
+                p.pow = p.pow(:,1:ktest);
+                p.var = p.var(:,1:ktest);
             end
 
             % Compute terms with identical (i,j) 
             [s,I] = sortrows([p.sub p.var p.pow]);
-            cmb = [1==0;~all(s(1:end-1,:) - s(2:end,:) == 0,2)] ;
-            acc = cumsum(cmb);
-            rtn = [1;1+find(acc(2:end) > acc(1:end-1))];
-            p.coeff = accumarray([1+acc ones(size(acc))],p.coeff(I));
-            p.pow = p.pow(I(rtn),:);
-            p.sub = p.sub(I(rtn),:);
-            p.var = p.var(I(rtn),:);
+            [k,s,p.coeff] = spot_mex_msspoly_make_canonical_combine_coeffs(s,p.coeff(I));
+            p.coeff = p.coeff(1:k,:);
+            p.sub = s(1:k,1:2);
+            p.var = s(1:k,2+(1:v));
+            p.pow = s(1:k,2+v+(1:v));
+            s = [];
             
-            cnz = p.coeff ~= 0;
-            p = keepEntries(p,cnz);
+            % cmb = [1==0;~all(s(1:end-1,:) - s(2:end,:) == 0,2)] ;
+            % acc = cumsum(cmb);
+            % rtn = [1;1+find(acc(2:end) > acc(1:end-1))];
+            % p.coeff = accumarray([1+acc ones(size(acc))],p.coeff(I));
+            % p.pow = p.pow(I(rtn),:);
+            % p.sub = p.sub(I(rtn),:);
+            % p.var = p.var(I(rtn),:);
+
+            p = keepEntries(p,p.coeff ~= 0);
 
             % Remove all zero rows of pow
             msk = ~all(p.pow == 0,1);

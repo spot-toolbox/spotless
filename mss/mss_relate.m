@@ -17,4 +17,4 @@ m=mx+my;
 g=sortrows([[x  -(1:mx)'];[y (1:my)']]);
 g=[[g(1:m-1,1)==g(2:m,1);0] g(:,2)];
 
-ik=mss_gset(g);
+ik=spot_gset(g);
