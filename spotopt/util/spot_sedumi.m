@@ -1,7 +1,7 @@
 function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     if nargin < 5, options = spot_sdp_default_options(); end
     
-    sedumi_options = struct('fid',options.verbose);
+    sedumi_options = struct('fid',options.verbose,'errors',1);
     
     [x,y,s_info] = sedumi(A,b,c,K,sedumi_options);
     z = spot_sdp_cone_symm(c - A'*y,K);

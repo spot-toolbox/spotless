@@ -92,7 +92,7 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     else
         cmd = 'minimize echo(0)';
     end
-    
+
     [r,res] = mosekopt(cmd,prob);
 
     switch res.sol.itr.prosta

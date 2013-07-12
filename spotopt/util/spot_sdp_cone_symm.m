@@ -1,8 +1,11 @@
 function xprime = spot_sdp_cone_symm(x,K);
+%  Utility for handling SDP formats.
+%  
+%  xprime = spot_sdp_cone_symm(x,K);
     [n,nf,nl,nq,nr,ns] = spot_sdp_cone_dim(K);
     
-    if ~spot_hasSize(x,[n 1])
-        error('First argument must be a column of appropriate length.');
+    if size(x,1) ~= n, 
+        error('x must have appropriate number of rows');
     end
     
     if issparse(x),
@@ -12,7 +15,7 @@ function xprime = spot_sdp_cone_symm(x,K);
     end
     
     nid = nf+nl+nq+nr;
-    xprime(1:nid) = x(1:nid);
+    xprime(1:nid,:) = x(1:nid,:);
     
     if ns == 0, return; end
     
@@ -30,5 +33,5 @@ function xprime = spot_sdp_cone_symm(x,K);
         maps{i} = sMap(K.s(i));
     end
     T = blkdiag(maps{:});
-    xprime(nid+1:end) = T*x(nid+1:end);
+    xprime(nid+1:end,:) = T*x(nid+1:end,:);
 end

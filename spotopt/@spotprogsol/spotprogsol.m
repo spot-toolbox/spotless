@@ -40,7 +40,8 @@ classdef spotprogsol
         function err = dimacs(sol)
             [P,A,b,c,K,d] = sol.prog.toSedumi(sol.objective);
             nf = sol.prog.numFree;
-            err = spot_sdp_dimacs(A,b,c,K,P'*sol.x,sol.y,[ zeros(nf,1) ; P(nf+1:end,nf+1:end)'*sol.z]);
+            err = spot_sdp_dimacs(A,b,c,K,P'*sol.x,sol.y,...
+                                  spot_sdp_cone_symm([ zeros(nf,1) ; P(nf+1:end,nf+1:end)'*sol.z],K));
         end
 
         function e = eval(sol,expr)
