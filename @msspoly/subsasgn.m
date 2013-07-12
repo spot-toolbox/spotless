@@ -29,6 +29,7 @@ switch s.type
         q = reshape(p2,size(p1));
         return;
     else
+
         switch length(s.subs)
           case 1,
             p2 = indexinto(p2,':');
@@ -55,6 +56,7 @@ switch s.type
             if any(ind(:) > prod(size(p1)))
                 if any(size(p1) == 1)
                     d = find(size(p1) ~= 1);
+                    if isempty(d), d = 2; end
                     p1.dim(d) = max(ind(:));
                 else
                     error(['In an assignment  A(I) = B, a matrix A cannot ' ...
