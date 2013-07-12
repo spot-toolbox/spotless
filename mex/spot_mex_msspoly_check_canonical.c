@@ -56,8 +56,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
      *   33     |  A negative value of pow corresponds to a non-trig. variable.
      *   34     |  A non-zero pow corresponds to a zero variable Id.
      *   35     |  A value in coeff is NaN/Inf/Complex.
-     *  102     |  Sub is not sorted.
+     *  102     |  [sub var pow] is not sorted.
+     *  103     |  [sub var pow] has a duplicate.
      *  104     |  A row of var is not sorted or has repeated entries.
+     *  105     |  There are zero coefficients.
+     *  106     |  A zero power has a non-zero variable id.
      */
 
   if(nrhs != 5)
@@ -131,27 +134,19 @@ int generateErrorCode(const mxArray *prhs[])
   /* The careful reader will at this point notice it was an
      error to store everything "row-wise" in terms of memory-locality. */
 
-  int prev_i = 0;
-  int prev_j = 0;
-
   int r;
   for(r = 0; r < rows; r++){
-    int i = sub[r];
-    int j = sub[rows+r];
+    int subI = sub[r];
+    int subJ = sub[rows+r];
 
-    if(prev_i > i || (prev_i == i && prev_j > j)){
-      /* printf("(%d,%d) (%d,%d)\n",i,j,prev_i,prev_j); */
-      canon_err = 102;
-    }
-    
-    if(!isInt(i) || !isInt(j))
+    if(!isInt(subI) || !isInt(subJ))
       return 22;
 
-    if(i <= 0 || i > m || j <= 0 || j > n)
+    /* It is important that this test go here
+       and not later, see the line inside the for loop below. */
+    if(subI <= 0 || subI > m || subJ <= 0 || subJ > n)
       return 32;
 
-    prev_i = i;
-    prev_j = j;
   }
 
   if(!isIntArray(rows*cols,var,TEST_NONNEG))
@@ -172,15 +167,17 @@ int generateErrorCode(const mxArray *prhs[])
       if(var[idx] == 0.0 && pow[idx] != 0.0)
 	return 34;
 
+      if(var[idx] != 0.0 && pow[idx] == 0.0)
+	canon_err = 106;
+
+
       if(j > 0){
 	int prevIdx = (j-1)*rows + i;
 	if(var[idx] != 0.0 && var[prevIdx] == var[idx]){
-	  /* printf("foo: %d %d: %f %f\n",prevIdx,idx,var[prevIdx],var[idx]); */
 	  canon_err = 104;
 	}
 
 	if(var[prevIdx] < var[idx]){
-	  /* printf("%d %d: %f %f\n",prevIdx,idx,var[prevIdx],var[idx]); */
 	  canon_err = 104;
 	}
       }
@@ -190,7 +187,67 @@ int generateErrorCode(const mxArray *prhs[])
   for(i = 0; i < rows; i++){
     if(!mxIsFinite(coeff[i]))
       return 35;
+    if(coeff[i] == 0.0)
+      canon_err = 105;
   }
 
-  return canon_err;
+  /* Return any error found so far, o.w. continue */
+  if(canon_err != 0)
+    return canon_err;
+
+  /* The code below will exit with an error if it finds one. */
+  
+  int prev_subI = 0;
+  int prev_subJ = 0;
+  for(r = 0; r < rows; r++){
+    int subI = sub[r];
+    int subJ = sub[rows+r];
+
+    if(prev_subI > subI ||
+       ( prev_subI == subI && prev_subJ > subJ)){
+      return 102;
+    } else if(prev_subI == subI && prev_subJ == subJ) {
+      /* Possible to have a duplicate (103)
+	 or be out of order (102) */
+      int c;
+      int dup = 1;
+      int varSorted = 0;
+      int powSorted = 0;
+      for(c = 0; c < cols; c++){
+	/* The loop invariant:
+	   varSorted = 0, powSorted = {-1,0,1} */
+	int idx = r+c*rows;
+	int prevIdx = r-1+c*rows;
+
+	if(var[idx] > var[prevIdx]){
+	  varSorted = 1;  /* Leave with success */
+	  break;
+	} else if(var[idx] < var[prevIdx]){
+	  varSorted = -1; /* Leave with failure */
+	  break;
+	}
+
+	if(powSorted == 0){
+	  if(pow[idx] > pow[prevIdx])
+	    powSorted = 1;
+	  else if(pow[idx] < pow[prevIdx])
+	    powSorted = -1;
+	}
+      }
+      if(varSorted == 0 && powSorted == 0){
+	return 103;
+      }
+      if(varSorted == -1 || (varSorted == 0 && powSorted == -1)){
+	return 102;
+      }
+      
+      
+      
+    }
+
+    prev_subI = subI;
+    prev_subJ = subJ;
+  }
+
+  return 0;
 }

@@ -35,7 +35,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   mxArray *mx_val;
   int m,n;
   double *key;
-  double *val;
+  double *valR;
+  double *valI;
 
   // Take in arguments.
   getArgSized(&mx_key,"double",0,nrhs,prhs,-1,-1);
@@ -44,22 +45,26 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   n = mxGetN(mx_key);
 
   getArgSized(&mx_val,"double",1,nrhs,prhs,m,1);
-  val = mxGetPr(mx_val);
+  valR = mxGetPr(mx_val);
+  valI = mxGetPi(mx_val);
 
   int i,j;
-  
-  
+
   mxArray *mx_keyOut;
   mxArray *mx_valOut;
   int k;
   double *keyOut;
-  double *valOut;
+  double *valOutR;
+  double *valOutI;
+
+  mxComplexity flag = (valI == NULL) ?  mxREAL : mxCOMPLEX;
 
   mx_keyOut = mxCreateDoubleMatrix(m,n,mxREAL);
   keyOut = mxGetPr(mx_keyOut);
   
-  mx_valOut = mxCreateDoubleMatrix(m,1,mxREAL);
-  valOut = mxGetPr(mx_valOut);
+  mx_valOut = mxCreateDoubleMatrix(m,1,flag);
+  valOutR = mxGetPr(mx_valOut);
+  valOutI = mxGetPi(mx_valOut);
   
   k=-1;
   for(i = 0; i < m; i++){
@@ -68,9 +73,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
       for(j = 0; j < n; j++){
 	keyOut[j*m+k] = key[j*m+i];
       }
-      valOut[k] = val[i];
+      valOutR[k] = valR[i];
+      if(flag == mxCOMPLEX)
+	valOutI[k] = valI[i];
     } else {
-      valOut[k] += val[i];
+      valOutR[k] += valR[i];
+      if(flag == mxCOMPLEX)
+	valOutI[k] = valI[i];
     }
   }
   if(nlhs > 0)

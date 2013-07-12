@@ -19,5 +19,6 @@ cd('mex');
 mex spot_gset.c 
 mex spot_mex_msspoly_check_canonical.c
 mex spot_mex_msspoly_make_canonical_combine_powers.c spot_mex_helpers.c
+mex spot_mex_msspoly_make_canonical_combine_coeffs.c spot_mex_helpers.c
 cd('..');
 fprintf('\n Done.\n')
