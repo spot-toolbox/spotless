@@ -1,4 +1,4 @@
-function q=recomp(x,p,M)
+function q=recomp(x,p,M,sz)
 %  q=recomp(x,p,M)
 %
 %
@@ -43,14 +43,20 @@ if isempty(x),
     q = M;
 else
     N = size(M,1);
+    
+    if nargin < 4, sz = [N 1]; end
+    
+    if prod(sz) ~= N, error('Size mismatch.'); end
+    
     nz = reshape(find(M ~= 0),[],1);
     [I,J] = ind2sub(size(M),nz);
     
     vs = repmat(xn',length(J),1);
     
+    [R,C] = ind2sub(sz,I);
     
-    dim = [ N 1 ];
-    sub = [ I ones(size(I)) ];
+    dim = sz;
+    sub = [ R C ];%I ones(size(I)) ];
     var = vs;
     pow = full(p(J,:));
     coeff = reshape(full(M(nz)),[],1);
