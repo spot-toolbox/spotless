@@ -403,9 +403,6 @@ classdef (InferiorClasses = {?double}) msspoly
                             num2str(errno) ', see spot_mex_msspoly_check_canonical.'];
                 else
                     flag = 1;
-                    if errno == 103
-                        disp('errno 103')
-                    end
                     emsg = ['msspoly not canonical: errno is ' ...
                             num2str(errno) '. See spot_mex_msspoly_check_canonical.'];
                 end
