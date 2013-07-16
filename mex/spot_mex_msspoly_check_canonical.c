@@ -38,7 +38,7 @@ int generateErrorCode(const mxArray *prhs[]);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-    /*  errno = spot_mex_msspoly_check_dimensions(dim,sub,pow,var,coeff)
+    /*  errno = spot_mex_msspoly_check_dimensions(dim,sub,var,pow,coeff)
      *
      *  [errno,v] = ...;
      *
@@ -94,8 +94,8 @@ int generateErrorCode(const mxArray *prhs[])
   
   const mxArray *mx_dim   = prhs[0];
   const mxArray *mx_sub   = prhs[1];
-  const mxArray *mx_pow   = prhs[2];
-  const mxArray *mx_var   = prhs[3];
+  const mxArray *mx_var   = prhs[2];
+  const mxArray *mx_pow   = prhs[3];
   const mxArray *mx_coeff = prhs[4];
 
   if(mxGetM(mx_dim) != 1 || mxGetN(mx_dim) != 2)

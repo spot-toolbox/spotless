@@ -53,10 +53,6 @@ classdef (InferiorClasses = {?double}) msspoly
     
     methods
         function p=msspoly(x,y,z,a,b)
-            errname = ['Variable names must match n or Tn where n ' ...
-                       'is a string, length(n) in 1:' ...
-                       num2str(msspoly.nameLength) ...
-                      ' and n(i) in ' msspoly.nameChars];
             switch nargin,
               case 0,
               case 1,
@@ -64,7 +60,7 @@ classdef (InferiorClasses = {?double}) msspoly
                   case 'msspoly',
                     p = x;
                   case 'double',
-                    if ~all(isfinite(x(:))),
+                    if any(isnan(x(:)) | isinf(x(:)))
                         error('infinite coefficients not permitted');
                     end
                     p.dim = size(x);
@@ -81,7 +77,10 @@ classdef (InferiorClasses = {?double}) msspoly
                 end
               case 2,
                 if ~msspoly.isName(x)
-                    error(errname);
+                    error( ['Variable names must match n or Tn where n ' ...
+                            'is a string, length(n) in 1:' ...
+                            num2str(msspoly.nameLength) ...
+                            ' and n(i) in ' msspoly.nameChars]);
                 end
                 if ~isa(y,'double') || ...
                         length(y) < 1 || ...
@@ -112,7 +111,6 @@ classdef (InferiorClasses = {?double}) msspoly
             if flg, error(emsg); end
         end
     end
-
     
     methods (Static)
         
@@ -355,7 +353,9 @@ classdef (InferiorClasses = {?double}) msspoly
         
     end
     
+    
     methods (Access = private)
+        
         function [flg,emsg] = check_dimensions(p)
         % Tests that the internal representation has the correct
         % dimensions and types.
@@ -393,7 +393,7 @@ classdef (InferiorClasses = {?double}) msspoly
         %              be repaird.
 
             [errno,check_flag] = spot_mex_msspoly_check_canonical(p.dim,p.sub,...
-                                                      p.pow,p.var,...
+                                                      p.var,p.pow,...
                                                       p.coeff);
             
             if errno ~= 0
