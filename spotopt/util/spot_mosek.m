@@ -93,7 +93,9 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
         cmd = 'minimize echo(0)';
     end
 
+    start = spot_now();
     [r,res] = mosekopt(cmd,prob);
+    [info.ctime,info.wtime] = spot_etime(spot_now(),start);
 
     switch res.sol.itr.prosta
       case 'PRIMAL_AND_DUAL_FEASIBLE',
