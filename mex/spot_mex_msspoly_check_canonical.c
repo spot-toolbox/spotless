@@ -266,6 +266,10 @@ int generateErrorCode(const mxArray *prhs[])
   }
 
   /* Test for any columns that are all zeros. */
+  if(rows == 0){
+    return;
+  }
+
   for(j = 0; j < cols; j++){ /* For each column */
     int all_zero = 1;
     for(i = 0; i < rows ; i ++){
