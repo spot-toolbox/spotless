@@ -41,7 +41,7 @@ function f = fn(p,x)
         else
             xx = xreal(mtch);
         end
-        r = reshape(Mf*prod(repmat(xx',size(pf,1),1).^pf,2),size(p));
+        r = reshape(Mf*prod(repmat(xx.',size(pf,1),1).^pf,2),size(p));
     end
     f = @preal;
 end
