@@ -19,6 +19,6 @@ function [ptope] = spot_exponent_bound_polytope(pow)
     % Quickly remove some obviously unnecessary monomials (i.e.
     % total degree or scalar degree too high / low
     L = [ ones(n,1) eye(n) -eye(n) -ones(n,1)];
-    opt = max(hpow*L);
+    opt = max(hpow*L,[],1);
     ptope = ptope(all(ptope*L <= repmat(opt,size(ptope,1),1),2),:);
 end
