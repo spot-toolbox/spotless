@@ -47,7 +47,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   varOut = mxGetPr(mx_varOut);
   
 
-  
+  /* Initialize all zeros */
   for(i = 0; i < m*n; i++){
     powOut[i] = 0;
     varOut[i] = 0;
@@ -59,29 +59,33 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   for(i = 0; i < m; i++){
     int k = 0;
 
+    /* Walk through the incoming variables. */
     for(j = 0; j < n; j++){
       int idxIn  = j*m + i;
       int idxOut = k*m + i;
-      /*
-	printf("(%d,%d):(%d,%d) [%f,%f] <- [%f,%f]\n",
-	     i,j,idxIn,idxOut,
-	     varIn[idxIn],powIn[idxIn],
-	     varOut[idxOut],powOut[idxOut]);
-      */
+
+      /* We are at the end of the list */
       if(varIn[idxIn] == 0)
 	break;
 
-      if(j == 0) {
-	/* printf("k==0: %f\n",varIn[idxIn]); */
-	varOut[idxOut] = varIn[idxIn];
-      }
+      /* Skip zero powers. */
+      if(powIn[idxIn] == 0)
+	continue;
 
-      if(varIn[idxIn] == varOut[idxOut]){
-	/*printf("Match!\n"); */
+      /* First item related to a power. */
+      if(varOut[idxOut] == 0) {
+	varOut[idxOut] = varIn[idxIn];
+	powOut[idxOut] = powIn[idxIn];
+      } else if(varOut[idxOut] == varIn[idxIn]){
 	powOut[idxOut] += powIn[idxIn];
-      } else {
+	/* With negative powers, we could be set back. */
+	if(powOut[idxOut] == 0){
+	  varOut[idxOut] = 0;
+	}
+      } else { /* existing variable is there but does not match */
 	k++;
 	idxOut+=m;
+
 	if(idxOut > m*n)
 	  mexErrMsgTxt("Indexing exception.");
 	varOut[idxOut] = varIn[idxIn];
@@ -92,7 +96,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
       kmax = k;
   }
 
-  
+    
 
   if(nlhs > 0)
     plhs[0] = mx_powOut;

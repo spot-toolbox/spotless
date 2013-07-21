@@ -58,9 +58,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
      *   35     |  A value in coeff is NaN/Inf/Complex.
      *  102     |  [sub var pow] is not sorted.
      *  103     |  [sub var pow] has a duplicate.
-     *  104     |  A row of var is not sorted or has repeated entries.
+     *  104     |  A row of var is not sorted.
      *  105     |  There are zero coefficients.
      *  106     |  A zero power has a non-zero variable id.
+     *  107     |  Row of var has repeated entries.
+     *  108     |  Column of pow is all zeros.
      */
 
   if(nrhs != 5)
@@ -123,7 +125,13 @@ int generateErrorCode(const mxArray *prhs[])
   double *sub = mxGetPr(mx_sub);
   double *pow = mxGetPr(mx_pow);  
   double *var = mxGetPr(mx_var);
-  double *coeff = mxGetPr(mx_coeff);
+  double *coeffR = mxGetPr(mx_coeff);
+  double *coeffI = NULL;
+
+  mxComplexity complexCoeff = mxIsComplex(mx_coeff);
+
+  if(complexCoeff)
+    coeffI = mxGetPi(mx_coeff);
   
   if(!isIntArray(2,dim,TEST_NONNEG))
     return 21;
@@ -161,7 +169,7 @@ int generateErrorCode(const mxArray *prhs[])
       if(!isInt(pow[idx]))
 	return 23;
 
-      if(pow[i] < 0 && !isTrigId((int)var[idx]))
+      if(pow[idx] < 0 && !isTrigId((int)var[idx]))
 	return 33;
 
       if(var[idx] == 0.0 && pow[idx] != 0.0)
@@ -174,7 +182,7 @@ int generateErrorCode(const mxArray *prhs[])
       if(j > 0){
 	int prevIdx = (j-1)*rows + i;
 	if(var[idx] != 0.0 && var[prevIdx] == var[idx]){
-	  canon_err = 104;
+	  canon_err = 107;
 	}
 
 	if(var[prevIdx] < var[idx]){
@@ -185,10 +193,17 @@ int generateErrorCode(const mxArray *prhs[])
   }
 
   for(i = 0; i < rows; i++){
-    if(!mxIsFinite(coeff[i]))
-      return 35;
-    if(coeff[i] == 0.0)
-      canon_err = 105;
+    if(complexCoeff){
+      if(!mxIsFinite(coeffR[i]) || !mxIsFinite(coeffI[i]))
+	return 35;
+      if(coeffR[i] == 0.0 && coeffI[i] == 0.0)
+	canon_err = 105;
+    } else {
+      if(!mxIsFinite(coeffR[i]))
+	return 35;
+      if(coeffR[i] == 0.0)
+	canon_err = 105;
+    }
   }
 
   /* Return any error found so far, o.w. continue */
@@ -203,6 +218,7 @@ int generateErrorCode(const mxArray *prhs[])
     int subI = sub[r];
     int subJ = sub[rows+r];
 
+    /* First case: indices not sorted */
     if(prev_subI > subI ||
        ( prev_subI == subI && prev_subJ > subJ)){
       return 102;
@@ -249,5 +265,22 @@ int generateErrorCode(const mxArray *prhs[])
     prev_subJ = subJ;
   }
 
+  /* Test for any columns that are all zeros. */
+  for(j = 0; j < cols; j++){ /* For each column */
+    int all_zero = 1;
+    for(i = 0; i < rows ; i ++){
+      int idx = j*rows + i;
+
+      if(pow[idx] != 0){
+	all_zero = 0;
+	break;
+      }
+    }
+    if(all_zero){
+      return 108;
+    }
+  }
+
+  
   return 0;
 }
