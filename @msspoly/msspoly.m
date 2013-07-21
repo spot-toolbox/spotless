@@ -458,7 +458,6 @@ classdef (InferiorClasses = {?double}) msspoly
             elseif flg == 0
                 return;
             end
-                
             
             p = keepEntries(p,p.coeff ~= 0);
             
@@ -467,7 +466,7 @@ classdef (InferiorClasses = {?double}) msspoly
             if size(p.coeff,1) == 0
                 return;
             end
-            p.var(p.pow==0) = 0;% = p.var.*(p.pow ~= 0); % Remove zero power
+            p.var = p.var.*(p.pow ~= 0); % Remove zero power
                                         % variables, vi^0
             [p.var,I] = sort(p.var,2,'descend'); % Sort for dec. id
             ii = repmat((1:size(p.pow,1))',1,size(p.pow,2));
@@ -476,17 +475,9 @@ classdef (InferiorClasses = {?double}) msspoly
             I = [];
             ii = [];
 
-            
+
             if size(p.var,2) ~= 0
                 % Combine powers for variables repeated in a row.
-                
-                % Old code for speed test:
-                %ROW = repmat((1:size(p.var,1))',1,size(p.var,2));
-                %v0  = [zeros(size(p.var,1),1) p.var];
-                %COL = 1+cumsum(diff(v0,[],2) < 0,2);
-
-                %powold = accumarray([ ROW(:) COL(:) ], p.pow(:));
-                %varold = accumarray([ ROW(:) COL(:) ], p.var(:), size(p.pow), @max);
                 [p.pow,p.var,ktest] = ...
                     spot_mex_msspoly_make_canonical_combine_powers(p.pow,p.var);
                 p.pow = p.pow(:,1:ktest);
@@ -526,11 +517,10 @@ classdef (InferiorClasses = {?double}) msspoly
 
             p = keepEntries(p,p.coeff ~= 0);
 
-            % Remove all zero rows of pow
+            % Remove all zero cols of pow
             msk = ~all(p.pow == 0,1);
             p.var = p.var(:,msk);
             p.pow = p.pow(:,msk);
-            
 
             [flg,emsg] = p.check_canonical();
             if flg
