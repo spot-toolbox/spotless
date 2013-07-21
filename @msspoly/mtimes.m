@@ -2,6 +2,15 @@ function q=mtimes(p1,p2)
 p1=msspoly(p1);
 p2=msspoly(p2);
 
+if (isempty(p1) && spot_hasSize(p2,[1 1]))
+    q = p1;
+    return;
+elseif (isempty(p2) && spot_hasSize(p1,[1 1]))
+    q = p2;
+    return;
+end
+
+
 if p1.dim(2) ~= p2.dim(1)
     if spot_hasSize(p1,[1 1])
         p1 = diag(repmat(p1,p2.dim(1),1)); %p1 scalar
