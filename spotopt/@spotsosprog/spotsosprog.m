@@ -66,13 +66,27 @@ classdef spotsosprog < spotprog
             if ~spot_hasSize(expr,[1 1])
                 error('buildSOSDecomp expects a scalar polynomial.');
             end
-
             decvar = pr.variables;
-
+            
+            % Rescale expr to normalize things.
+            A0 = diff(expr,decvar);
+            b0 = subs(expr,decvar,0*decvar);
+            [~,~,Coeff] = decomp([b0 A0].');
+            
+            if nnz(Coeff) == 0
+                Q = [];
+                phi = [];
+                y = [];
+                basis = [];
+            else
+                expr = expr/max(abs(Coeff(:)));
+            end
+            
+            
+            % Build the Gram basis
             phi = spotsosprog.buildGramBasis(expr,decvar);
-
             [pr,Q] = pr.newPSD(length(phi));
-    
+            
             decvar = [decvar ; mss_s2v(Q)];
             sosCnst = expr-phi'*Q*phi;
 
@@ -81,7 +95,7 @@ classdef spotsosprog < spotprog
             [var,pow,Coeff] = decomp([b A].');
             
             [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
-            basis = recomp(var,pow,eye(size(pow,1)));
+            basis = recomp(var,pow,speye(size(pow,1)));
         end
         
         function [pr,Q,phi,y,basis] = buildSOSDecompDual(pr,expr)
@@ -179,7 +193,7 @@ classdef spotsosprog < spotprog
                 Q = mss_v2s(q0 + G1*y);
             end
             pr = pr.withPSD(Q);
-            basis = recomp(var,pow,eye(size(pow,1)));
+            basis = recomp(var,pow,speye(size(pow,1)));
         end
     end
     
@@ -273,7 +287,7 @@ classdef spotsosprog < spotprog
             
             [indet,pow,M] = decomp(expr,decvar);
             
-            monom = recomp(indet,pow,eye(size(pow,1)));
+            monom = recomp(indet,pow,speye(size(pow,1)));
             
             [I,J,S] = find(M);
             
@@ -367,7 +381,7 @@ classdef spotsosprog < spotprog
 
             exponent_m = spot_build_gram_basis(pow);
     
-            phi = recomp(indet,exponent_m,eye(size(exponent_m,1)));
+            phi = recomp(indet,exponent_m,speye(size(exponent_m,1)));
         end
     end
 end
