@@ -3,7 +3,7 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     
     sedumi_options = struct('fid',options.verbose);
     
-    [~,nf,nl,nq,nr,ns] = spot_sdp_cone_dim(K);
+    [n,nf,nl,nq,nr,ns] = spot_sdp_cone_dim(K);
     
     %    if ns > 0, error('SPOT: semidefinite constraints not supported for MOSEK.'); end
     
@@ -103,11 +103,16 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
         info.dualInfeasible   = 0;
       case 'PRIMAL_INFEASIBLE',
         info.primalInfeasible = 1;
+        info.dualInfeasible = 0;
       case 'DUAL_INFEASIBLE',
         info.dualInfeasible = 1;
+        info.primalInfeasible = 0;
       case 'PRIMAL_AND_DUAL_INFEASIBLE',
         info.primalInfeasible = 0;
         info.dualInfeasible = 1;
+      case 'UNKNOWN',
+        info.primalInfeasible = 0;
+        info.dualInfeasible = 0;
     end
     
     if ~info.primalInfeasible,
@@ -146,6 +151,8 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
             x = [ x ; barx ];
 
         end
+    else
+        x = NaN*ones(n,1);
     end
     
     if ~info.dualInfeasible
@@ -155,5 +162,7 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     
     info.solverName = 'mosek';
     info.solverInfo = res.sol;
-    info.dimacs = spot_sdp_dimacs(A,b,c,K,x,y,z);
+    if ~info.primalInfeasible & ~info.dualInfeasible
+        info.dimacs = spot_sdp_dimacs(A,b,c,K,x,y,z);
+    end
 end
