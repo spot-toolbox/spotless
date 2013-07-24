@@ -3,12 +3,12 @@
 #include <mex.h>
 #include <time.h>
 
-void getArgSized(mxArray **ptr, char * class, int idx,int nrhs, const mxArray *prhs[], int m, int n)
+void getArgSized(mxArray **ptr, const char * type, int idx,int nrhs, const mxArray *prhs[], int m, int n)
 {
   if( nrhs <= idx ){
-    mxErrMsgTxt("Need more arguments.");
-  } else if (!mxIsClass(prhs[idx],class)) {
-    mexErrMsgTxt("Argument has wrong class.");
+    mexErrMsgTxt("Need more arguments.");
+  } else if (!mxIsClass(prhs[idx],type)) {
+    mexErrMsgTxt("Argument has wrong type.");
   } else if (m >= 0 && mxGetM(prhs[idx]) != m){
     mexErrMsgTxt("Wrong number of rows.");
   } else if (n >= 0 && mxGetN(prhs[idx]) != n){

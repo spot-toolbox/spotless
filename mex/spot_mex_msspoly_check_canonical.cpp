@@ -86,7 +86,7 @@ int generateErrorCode(const mxArray *prhs[])
   int canon_err = 0;
   
   /* Test type of each argument. */
-  char *sdouble = "double";
+  const char *sdouble = "double";
   int i;
   
   for(i = 0; i < 5; i++){
@@ -128,7 +128,7 @@ int generateErrorCode(const mxArray *prhs[])
   double *coeffR = mxGetPr(mx_coeff);
   double *coeffI = NULL;
 
-  mxComplexity complexCoeff = mxIsComplex(mx_coeff);
+  bool complexCoeff = mxIsComplex(mx_coeff);
 
   if(complexCoeff)
     coeffI = mxGetPi(mx_coeff);
@@ -267,7 +267,7 @@ int generateErrorCode(const mxArray *prhs[])
 
   /* Test for any columns that are all zeros. */
   if(rows == 0){
-    return;
+    return 0;
   }
 
   for(j = 0; j < cols; j++){ /* For each column */

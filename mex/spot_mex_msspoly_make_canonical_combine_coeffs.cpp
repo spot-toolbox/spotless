@@ -57,12 +57,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   double *valOutR;
   double *valOutI;
 
-  mxComplexity flag = mxIsComplex(mx_val);
+  bool flag = mxIsComplex(mx_val);
 
   mx_keyOut = mxCreateDoubleMatrix(m,n,mxREAL);
   keyOut = mxGetPr(mx_keyOut);
   
-  mx_valOut = mxCreateDoubleMatrix(m,1,flag);
+  mx_valOut = mxCreateDoubleMatrix(m,1,flag ? mxCOMPLEX : mxREAL);
   valOutR = mxGetPr(mx_valOut);
   valOutI = mxGetPi(mx_valOut);
   
