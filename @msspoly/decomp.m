@@ -1,13 +1,14 @@
-function [x,p,M]=decomp(q,v)
+function [x,p,M,sz]=decomp(q,v)
 %
-%  [x,p,M]=decomp(q)
+%  [x,p,M,sz]=decomp(q)
 %
 %  q -- An n-by-k msspoly.
 %
 %  Returns:
-%  x -- an v-by-1 free msspoly including all variables appearing in q.
-%  p -- an m-by-v array of non-negative integers.
-%  M -- an (nk)-by-m sparse array of doubles.
+%  x  -- an v-by-1 free msspoly including all variables appearing in q.
+%  p  -- an m-by-v array of non-negative integers.
+%  M  -- an (nk)-by-m sparse array of doubles.
+%  sz -- size(q)
 %
 %  Satisfying:
 %
@@ -24,12 +25,15 @@ function [x,p,M]=decomp(q,v)
 %
 %
 
+
     function [vary,powy] = subvp(num,var,pow)
     nn = msspoly.match_list(num,var);
     [i,j,s] = find(nn);
     vary = sparse(i,j,num(s),size(var,1),size(var,2));
     powy = sparse(i,j,pow(sub2ind(size(pow),i,j)));
     end
+
+sz = size(q);
 
 if length(q) == 0
     x = msspoly();
