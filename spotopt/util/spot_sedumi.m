@@ -3,7 +3,14 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     
     info = struct();
     
-    sedumi_options = struct('fid',options.verbose,'errors',1);
+    if isfield(options.solver_options,'sedumi')
+        sedumi_options = options.solver_options.sedumi;
+    else
+        sedumi_options = struct('errors',1);
+    end    
+    if ~isfield(sedumi_options,'fid')
+        sedumi_options.fid = options.verbose;
+    end
     
     start = spot_now();
     [x,y,s_info] = sedumi(A,b,c,K,sedumi_options);

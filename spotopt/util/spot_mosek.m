@@ -1,7 +1,6 @@
-function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
+function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     if nargin < 5, options = spot_sdp_default_options(); end
     
-    sedumi_options = struct('fid',options.verbose);
     
     [n,nf,nl,nq,nr,ns] = spot_sdp_cone_dim(K);
     
@@ -92,9 +91,16 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     else
         cmd = 'minimize echo(0)';
     end
+    
+    if isfield(options.solver_options,'mosek')
+        param = options.solver_options.mosek;
+    else
+        param = struct();
+    end
+    
 
     start = spot_now();
-    [r,res] = mosekopt(cmd,prob);
+    [r,res] = mosekopt(cmd,prob,param);
     [info.ctime,info.wtime] = spot_etime(spot_now(),start);
 
     switch res.sol.itr.prosta
