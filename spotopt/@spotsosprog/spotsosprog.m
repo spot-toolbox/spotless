@@ -24,9 +24,10 @@ classdef spotsosprog < spotprog
             
             mtch = match(x,pr.variables);
             
-            flag = ~(any(any(pow(:,mtch(mtch~=0)) > 1)) | ...
-                     any(imag(Coeff(:)) ~= 0));
-            
+            flag = ~(any(imag(Coeff(:)) ~= 0) | ...
+                     any(pow(:,mtch(mtch~=0))<0) | ...
+                     any(sum(pow(:,mtch(mtch~=0)),2)>1));
+
             if ~flag,
                 indet = [];
             else
