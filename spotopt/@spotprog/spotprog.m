@@ -361,6 +361,54 @@ classdef spotprog
             z = mss_v2s(z);
         end
         
+        function pr = withDD(pr,Q)
+            if size(Q,1) ~= size(Q,2)
+                error('Arugment must be square.');
+            end
+            
+           ndim = spotprog.psdDimToNo(size(Q,1));
+           % Constrain Q to be DD (vectorized version)
+           n = length(Q);
+           [pr,tauvec] = pr.newFree(ndim);
+           tau = mss_v2s(tauvec);
+                  
+           T = diag(ones(1,n)); T = double(~T); 
+           tau0d = T.*tau;
+           T = triu(T);
+           tauT = T.*tau;
+           QT = T.*Q;
+           tauT_vec = mss_s2v(tauT);
+           QT_vec = mss_s2v(QT);
+           nzs_tauT_vec = find(tauT_vec);
+           nzs_QT_vec = find(QT_vec);
+           
+           % This should never happen, but I'm keeping the check in just
+           % for debugging
+           if ~all(nzs_tauT_vec == nzs_QT_vec)
+               disp('Something strange happened');
+               keyboard;
+           end
+           
+           tauT_vec = tauT_vec(nzs_tauT_vec);
+           QT_vec = QT_vec(nzs_QT_vec);
+           pr = pr.withPos(tauT_vec - QT_vec); 
+           pr = pr.withPos(tauT_vec + QT_vec);
+           pr = pr.withPos(diag(Q) - tau0d*ones(n,1));
+            
+            
+        end
+        
+        
+        
+        function pr = withSDD(pr,e)
+            if size(e,1) ~= size(e,2)
+                error('Arugment must be square.');
+            end
+            [pr,Q] = pr.newSDD(size(e,1));
+            pr = pr.withEqs(Q - e);
+            
+        end
+        
         function [pr,v] = newFree(pr,n,m)
             if nargin < 3, m = 1; end
             if ~spotprog.isScalarDimension(n)
@@ -442,6 +490,200 @@ classdef spotprog
             V = mss_v2s(v);
         end
         
+        function [pr,Q] = newSym(pr, dim)
+            if ~spotprog.isScalarDimension(dim)
+                error('dim must be a row of non-negative scalars.');
+            end
+            
+            ndim = spotprog.psdDimToNo(dim);
+            
+            [pr,Qvec] = pr.newFree(ndim);
+            Q = mss_v2s(Qvec);
+        end
+        
+        function [pr,Q] = newDD(pr,dim)
+            if ~spotprog.isScalarDimension(dim)
+                error('dim must be a row of non-negative scalars.');
+            end
+            ndim = spotprog.psdDimToNo(dim);
+            
+            [pr,Qvec] = pr.newFree(ndim);
+            Q = mss_v2s(Qvec);
+                        
+                      
+           % Constrain Q to be DD (vectorized version)
+           n = length(Q);
+           [pr,tauvec] = pr.newFree(ndim);
+           tau = mss_v2s(tauvec);
+                  
+           T = diag(ones(1,n)); T = double(~T); 
+           tau0d = T.*tau;
+           T = triu(T);
+           tauT = T.*tau;
+           QT = T.*Q;
+           tauT_vec = mss_s2v(tauT);
+           QT_vec = mss_s2v(QT);
+           nzs_tauT_vec = find(tauT_vec);
+           nzs_QT_vec = find(QT_vec);
+           
+           % This should never happen, but I'm keeping the check in just
+           % for debugging
+           if ~all(nzs_tauT_vec == nzs_QT_vec)
+               disp('Something strange happened');
+               keyboard;
+           end
+           
+           tauT_vec = tauT_vec(nzs_tauT_vec);
+           QT_vec = QT_vec(nzs_QT_vec);
+           pr = pr.withPos(tauT_vec - QT_vec); 
+           pr = pr.withPos(tauT_vec + QT_vec);
+           pr = pr.withPos(diag(Q) - tau0d*ones(n,1));
+           
+           
+%            % Constrain Q to be DD (old vectorized version)
+%            n = length(Q);
+%            [pr,tau] = pr.newFree(n,n);
+%            T = diag(ones(1,n)); T = double(~T);
+%            tau = T.*tau;
+%            Q0d = T.*Q;
+%            pr = pr.withPos(tau - Q0d); 
+%            pr = pr.withPos(tau + Q0d);
+%            pr = pr.withPos(diag(Q) - tau*ones(n,1));
+            
+%            % Constrain Q to be DD (non-vectorized version)
+%            n = length(Q);
+%            for k = 1:n
+%                 inds = [1:k-1,k+1:n];
+%                 [pr,tau] = pr.newFree(n-1); % Slack variables
+%                 pr = pr.withPos(tau - Q(k,inds)');
+%                 pr = pr.withPos(tau + Q(k,inds)');
+%                 pr = pr.withPos(Q(k,k) - sum(tau));
+%            end
+        end
+        
+        function [prog,A,pvar] = newSDD(prog,n)
+            if ~spotprog.isScalarDimension(n)
+                error('dim must be a row of non-negative scalars.');
+            end
+            [i,j]=ind2sub([n n],mss_s2v(reshape(1:n^2,n,n)));
+
+            offdiag = i ~= j;
+            i = i(offdiag);
+            j = j(offdiag);
+
+            M = nchoosek(n,2);
+
+            [prog,L] = prog.newLor(3,M); % keyboard;
+            prog = prog.withPos(L(1,:)+L(2,:));
+
+
+            P = [ 1 1 0 ; 0 0 1 ; 1 -1 0]*L;
+            I = [ i' ; i' ; j' ];
+            J = [ i' ; j' ; j' ];
+
+            Ind = sub2ind([n n],I(:),J(:));
+            S=sparse(Ind,(1:3*M)',ones(3*M,1),n*n,3*M);
+
+            %---- option a: these 30 lines.
+            [pvar,p,Coeff] = decomp(P(:)); 
+            M = S*Coeff;
+            N = size(M,1);
+            [I,J,C] = find(M);
+            dim     = [ N 1 ];
+            sub     = [ I ones(size(I)) ];
+            coeff   = C;
+
+            % Assumption above is that variables enter linearly,
+            % and no affine term appears. As a result, each row corresponds
+            % to a single variable, indicated by the column.
+            [i,j,e] = find(p);
+
+            if max(sum(p ~= 0,2)) ~= 1 || ...
+                    min(sum(p~=0,2)) ~= 1 || ...
+                    any(e ~= 1)
+                error('Assumption violation.');
+            end
+
+            % Fetch variable ID numbers.
+            [~,xn] = isfree(pvar);
+            xn = xn(j);  % For each (i,j) find the variables for that row.
+            xn(i) = xn;
+
+            var = xn(J);
+            pow = ones(size(J));
+
+            SP = msspoly(dim,sub,var,pow,coeff);
+            A = mss_v2s(mss_s2v(reshape(SP,n,n)));
+
+            %--- option B, this one line
+            % A = mss_v2s(mss_s2v(reshape(S*P(:),n,n)));
+        end
+        
+        function [pr,Q] = newDDdual(pr,dim)
+            if ~spotprog.isScalarDimension(dim)
+                error('dim must be a row of non-negative scalars.');
+            end
+            ndim = spotprog.psdDimToNo(dim);
+            
+            [pr,Qvec] = pr.newFree(ndim);
+            Q = mss_v2s(Qvec);
+                        
+                      
+           % Constrain Q to be in dual of DD (non-vectorized version)
+           n = length(Q);
+           pr = pr.withPos(diag(Q));
+           for i = 1:n
+               for j = [1:i-1, i+1:n] % j \neq i
+                   [pr,tau(i,j)] = pr.newFree(1);
+                   pr = pr.withPos(tau(i,j) - Q(i,j));
+                   pr = pr.withPos(tau(i,j) + Q(i,j));
+                   pr = pr.withPos(Q(i,i) + Q(j,j) - tau(i,j));
+               end
+           end
+           
+           
+        end
+        
+        function [pr,Q] = newSDDdual(pr,n)
+            if ~spotprog.isScalarDimension(n)
+                error('dim must be a row of non-negative scalars.');
+            end
+            
+           ndim = spotprog.psdDimToNo(n);
+            
+           [pr,Qvec] = pr.newFree(ndim);
+           Q = mss_v2s(Qvec);
+            
+            % Constrain Q to be in dual of SDD (non-vectorized version)
+           n = length(Q);
+           M = [0.5000         0    0.5000
+                0.5000         0   -0.5000
+                0    1.0000         0];
+           % pr = pr.withPos(diag(Q));
+           for i = 1:n
+               for j = [1:i-1, i+1:n] % j \neq i
+                   % Xij = [Q(i,i) Q(i,j); Q(j,i) Q(j,j)];
+                   % pr = pr.withPSD(Xij);
+                   pr = pr.withLor(M*[Q(i,i);Q(i,j);Q(j,j)]);
+               end
+           end
+            
+
+           
+        end
+      
+        
+        function [pr,Q] = newDiag(pr,dim)
+            if ~spotprog.isScalarDimension(dim)
+                error('dim must be a row of non-negative scalars.');
+            end
+
+	    [pr,diagvec] = pr.newPos(dim);
+
+	    Q = diag(diagvec);
+        end
+        
+        
         function pred = isStandardDualForm(pr)
             pred = pr.numEquations == 0 && spotprog.coneDim(pr.K1) == 0;
         end
@@ -491,14 +733,126 @@ classdef spotprog
                 [P,A,b,c,K,d] = pr.toSedumi(pobj);
 
                 % Enable basic facial reduction.
+                % save Abck_1sdsos_30.mat A b c K options P pr pobj 
                 [x,y,z,info] = solver(A,b,c,K,options);
 
-                xsol = P*x;
-                zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
+                if ~isempty(x)
+                   xsol = P*x;
+                else
+                    xsol = [];
+                end
+                if isempty(z)
+                    zsol = [];
+                else
+                    zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
+                end
                 
                 sol = spotprogsol(pr,pobj,xsol,y,zsol,info);
             end
         end
+        
+        function [sol] = minimizeDSOS(prog,pobj,solver,options)
+            if nargin < 2,
+                pobj = 0;
+            end
+            if nargin < 3,
+                solver = @spot_gurobi;
+            end
+            if nargin < 4,
+                options = spotprog.defaultOptions;
+            end
+            
+            pobj = msspoly(pobj);
+
+            
+            % Enable removal of redundant equations.
+            %[feas,E,F,g,U,V,w,Ad,bd,cd,Kd] = spot_sdp_remove_redundant_eqs(A,b,c,K);
+            
+            if ~isfield(options,'dualize')
+                options.dualize = false;
+            end
+            
+            if options.dualize
+                error('dualization not supported');
+                if ~prog.isStandardDualForm
+                    error(['Sorry dualization is not supported.  ' ...
+                           'Please write your program in standard ' ...
+                           'dual form.']);
+                end
+                [dl,dobj] = prog.toDual(pobj);
+                [P,A,b,c,K,d] = dl.toSedumi(-dobj);
+                
+                [x,y,z,info] = solver(A,b,c,K,options);
+                nf = dl.numFree;
+                xsol = P*x;
+                zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
+                sol = spotprogsol(dl,-dobj,xsol,y,zsol,info,1);
+            else
+                pr = prog.primalize();
+                nf = pr.numFree;
+                [P,A,b,c,K,d] = pr.toSedumi(pobj);
+
+                % Enable basic facial reduction.
+                [x,y,z,info] = solver(A,b,c,K,options);
+
+                xsol = P*x;
+                zsol = []; % FIX THIS P(nf+1:end,nf+1:end)*z(nf+1:end);
+                
+                sol = spotprogsol(pr,pobj,xsol,y,zsol,info);
+            end
+        end
+        
+        function [sol] = minimizeSDSOS(prog,pobj,solver,options)
+            if nargin < 2,
+                pobj = 0;
+            end
+            if nargin < 3,
+                solver = @spot_sedumi;
+            end
+            if nargin < 4,
+                options = spotprog.defaultOptions;
+            end
+            
+            pobj = msspoly(pobj);
+
+            
+            % Enable removal of redundant equations.
+            %[feas,E,F,g,U,V,w,Ad,bd,cd,Kd] = spot_sdp_remove_redundant_eqs(A,b,c,K);
+            
+            if ~isfield(options,'dualize')
+                options.dualize = false;
+            end
+            
+            if options.dualize
+                if ~prog.isStandardDualForm
+                    error(['Sorry dualization is not supported.  ' ...
+                           'Please write your program in standard ' ...
+                           'dual form.']);
+                end
+                [dl,dobj] = prog.toDual(pobj);
+                [P,A,b,c,K,d] = dl.toSedumi(-dobj);
+                
+                [x,y,z,info] = solver(A,b,c,K,options);
+                nf = dl.numFree;
+                xsol = P*x;
+                zsol = P(nf+1:end,nf+1:end)*z(nf+1:end);
+                sol = spotprogsol(dl,-dobj,xsol,y,zsol,info,1);
+            else
+                pr = prog.primalize();
+                nf = pr.numFree;
+                [P,A,b,c,K,d] = pr.toSedumi(pobj);
+
+                % Enable basic facial reduction.
+                [x,y,z,info] = solver(A,b,c,K,options);
+
+                xsol = P*x;
+                zsol = []; % FIX THIS!!! P(nf+1:end,nf+1:end)*z(nf+1:end);
+                
+                sol = spotprogsol(pr,pobj,xsol,y,zsol,info);
+            end
+        end
+        
+        
     end
     
     methods (Access = public)

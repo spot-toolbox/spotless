@@ -60,9 +60,9 @@ classdef (InferiorClasses = {?double}) msspoly
                   case 'msspoly',
                     p = x;
                   case 'double',
-                    if any(isnan(x(:)) | isinf(x(:)))
-                        error('infinite coefficients not permitted');
-                    end
+%                     if any(isnan(x(:)) | isinf(x(:)))
+%                         error('infinite coefficients not permitted');
+%                     end
                     p.dim = size(x);
                     [ii,jj,cc]=find(x);
                     p.sub = [ii(:) jj(:)];
@@ -101,7 +101,11 @@ classdef (InferiorClasses = {?double}) msspoly
                 p.sub = full(y);
                 p.var = full(z);
                 p.pow = full(a);
-                p.coeff = full(b);
+                if isa(b,'msspoly')
+                  p.coeff = b;
+                else
+                  p.coeff = full(b);
+                end
                 p = p.make_canonical();
               otherwise,
                 error('Unsupported arguments.');
@@ -109,6 +113,45 @@ classdef (InferiorClasses = {?double}) msspoly
             
             [flg,emsg] = check_canonical(p);
             if flg, error(emsg); end
+        end
+        
+        function y = det(x)
+          if ~isequal(size(size(x)), [1 2]) || size(x,1) ~= size(x,2)
+            error('Must be a square matrix to compute determinant')
+          end
+          n = size(x,1);
+          sigma = perms(1:n);
+          I = eye(n);
+          y = det(I(:,sigma(1,:)))*prod(diag(x.indexinto(1:n,sigma(1,:))));
+          for i=2:size(sigma,1),
+            y = y + det(I(:,sigma(i,:)))*prod(diag(x.indexinto(1:n,sigma(i,:))));
+          end
+        end
+        
+        function y = prod(x)
+          if min(size(x)) == 1,
+            y = x.indexinto(1);
+            for i=2:length(x),
+              y = y * x.indexinto(i);
+            end
+          else
+            error('Prod not implemented for matrices yet');
+          end
+        end
+        
+        function y = adjugate(x)
+          if ~isequal(size(size(x)), [1 2]) || size(x,1) ~= size(x,2)
+            error('Must be a square matrix to compute adjugate')
+          end
+          n = size(x,1);
+          y = zeros(n,n)*x.indexinto(1,1);
+          s.type = '()';
+          for i=1:n,
+            for j=1:n,
+              s.subs = {j, i};
+              y = subsasgn(y,s,(-1)^(i+j)*det(x.indexinto([1:i-1 i+1:n],[1:j-1 j+1:n])));
+            end
+          end
         end
     end
     

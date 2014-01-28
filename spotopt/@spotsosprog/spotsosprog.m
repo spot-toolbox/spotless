@@ -5,7 +5,12 @@ classdef spotsosprog < spotprog
     properties
         sosExpr = {};
         sosTrigExpr = {};
+        dsosExpr = {};
+        sdsosExpr = {};
+	diagsosExpr = {};
         indeterminates = msspoly([]);
+        gramMatrices = {};
+        gramMonomials = {};
     end
 
     methods (Access = private)
@@ -61,8 +66,8 @@ classdef spotsosprog < spotprog
     
 
     
-    methods (Access = protected)
-        function [pr,Q,phi,y,basis] = buildSOSDecompPrimal(pr,expr)
+    methods (Access = public)
+        function [pr,Q,phi,y,basis,eqMultFac] = buildSOSDecompPrimal(pr,expr,newGram,options)
             if ~spot_hasSize(expr,[1 1])
                 error('buildSOSDecomp expects a scalar polynomial.');
             end
@@ -73,6 +78,8 @@ classdef spotsosprog < spotprog
             b0 = subs(expr,decvar,0*decvar);
             [~,~,Coeff] = decomp([b0 A0].');
             
+            eqMultFac = 1;
+            
             if nnz(Coeff) == 0
                 Q = [];
                 phi = [];
@@ -80,13 +87,174 @@ classdef spotsosprog < spotprog
                 basis = [];
             else
                 expr = expr/max(abs(Coeff(:)));
+                eqMultFac = max(abs(Coeff(:)));
             end
             
             
             % Build the Gram basis
-            phi = spotsosprog.buildGramBasis(expr,decvar);
-            [pr,Q] = pr.newPSD(length(phi));
+            phi = spotsosprog.buildGramBasis(expr,decvar,options); 
             
+            if isfield(options,'trig') && options.trig.enable
+              phi = pr.trigMonomReduction(phi,options.trig.sin,options.trig.cos);
+            end
+            
+            [pr,Q] = newGram(pr,length(phi));
+            sosCnst = expr-phi'*Q*phi;
+            
+            if isfield(options,'trig') && options.trig.enable
+              sosCnst = pr.trigExprReduction(sosCnst,options.trig.sin,options.trig.cos);
+            end
+            decvar = pr.variables;
+            
+            A = diff(sosCnst,decvar);
+            b = subs(sosCnst,decvar,0*decvar);
+            [var,pow,Coeff] = decomp([b A].');
+            
+            [pr,y] = pr.withEqs(Coeff'*[1;decvar]);
+            basis = recomp(var,pow,speye(size(pow,1))); 
+        end
+        
+        function x = trigMonomReduction(pr,x,s,c)
+          [vars,exp,coeff]=decomp(x);
+                    
+          [~,xid] = isfree(vars);
+          [~,cid] = isfree(c);
+          [~,sid] = isfree(s);
+          
+          smtch = mss_match(xid,sid);
+          vars     = [ vars ; s(smtch == 0) ];
+          
+          [~,xid] = isfree(vars);
+          
+          exp   = [exp zeros(size(exp,1), sum(smtch == 0))];
+          smtch = mss_match(xid,sid);
+          
+          mtch = mss_match(xid,cid);
+          
+          %           guess = 0;
+          
+          for i = 1:length(mtch)
+            if mtch(i) ~= 0
+              ind = find(exp(:,mtch(i)) >= 2,1);
+              while ~isempty(ind)
+                exp(ind,mtch(i)) = exp(ind,mtch(i)) - 2;
+                c0 = exp(ind,:);
+                exp(ind,smtch(i)) = exp(ind,smtch(i)) + 2;
+                exp = unique([exp; c0],'rows');
+
+                ind = find(exp(:,mtch(i)) >= 2,1);
+              end
+            end
+          end
+          
+          x=recomp(vars,exp,eye(size(exp,1)));
+        end
+        
+        function x = trigExprReduction(pr,x,s,c)
+          for i=1:length(s),
+            
+            [~,cid] = isfree(c(i));
+            [~,sid] = isfree(s(i));
+            [ii,jj] = find(x.var == cid);
+            %           cind = find(x.var == cid);
+            pow = x.pow;
+            vars = x.var;
+            sub = x.sub;
+            coeff = x.coeff;
+            cind_array = ii+(jj-1)*size(pow,1);
+            ind = find(pow(ii+(jj-1)*size(pow,1)) >= 2);
+            N = length(ind);
+            
+            pow(cind_array(ind)) = pow(cind_array(ind)) - 2;
+            pow = [pow zeros(size(pow,1),1); pow(ii(ind),:) 2*ones(N,1)];
+            vars = [vars zeros(size(vars,1),1); vars(ii(ind),:) sid*ones(N,1)];
+            sub = [sub;ones(N,2)];
+            coeff = [coeff;-coeff(ii(ind))];
+            x = msspoly([1 1],sub,vars,pow,coeff);
+          end
+          
+%           display('Starting expr reduction')
+%           [vars,exp,coeff]=decomp(x);
+%           
+%           [~,xid] = isfree(vars);
+%           [~,cid] = isfree(c);
+%           [~,sid] = isfree(s);
+%           
+%           smtch = mss_match(xid,sid);
+%           vars     = [ vars ; s(smtch == 0) ];
+%           
+%           [~,xid] = isfree(vars);
+%           
+%           exp   = [exp zeros(size(exp,1), sum(smtch == 0))];
+%           smtch = mss_match(xid,sid);
+%           
+%           mtch = mss_match(xid,cid);
+%           
+%           %           guess = 0;
+%           
+%           for i = 1:length(mtch)
+%             if mtch(i) ~= 0
+%               ind = find(exp(:,mtch(i)) >= 2);
+%               while ~isempty(ind)
+%                 exp(ind,mtch(i)) = exp(ind,mtch(i)) - 2;
+%                 c0 = exp(ind,:);
+%                 exp(ind,smtch(i)) = exp(ind,smtch(i)) + 2;
+%                 exp = [exp;c0];
+%                 coeff = [coeff coeff(ind)];
+%                 coeff(ind) = -coeff(ind);
+% 
+% %                 e = exp(ind,:);
+% %                 e(mtch(i)) = e(mtch(i)) - 2;
+% %                 val = coeff(ind);
+% %                 for j=1:length(e),
+% %                   val = val*vars(j)^e(j);
+% %                 end
+% %                 x = x + (1 - vars(smtch(i))^2 - vars(mtch(i))^2)*val;
+% %                 [vars,exp,coeff]=decomp(x);
+% %                 
+% %                 [~,xid] = isfree(vars);
+% %                 [~,cid] = isfree(c);
+% %                 [~,sid] = isfree(s);
+% %                 
+% %                 smtch = mss_match(xid,sid);
+% %                 vars     = [ vars ; s(smtch == 0) ];
+% %                 
+% %                 [~,xid] = isfree(vars);
+% %                 
+% %                 exp   = [exp zeros(size(exp,1), sum(smtch == 0))];
+% %                 smtch = mss_match(xid,sid);
+% %                 
+% %                 mtch = mss_match(xid,cid);
+% %                 
+%                 ind = find(exp(:,mtch(i)) >= 2);
+%               end
+%             end
+%           end
+%           display('making unique')
+%           [expu,ia,ic] = unique(exp,'rows');
+%           coeff_trans = sparse(1:length(ic),ic,ones(length(ic),1),length(ic),length(ia));
+%           x=recomp(vars,exp,coeff);
+%           display('reconstructing')
+% %           x = recomp(vars,expu,coeff*coeff_trans);
+%           display('done')
+        end
+        
+        function [vars,exp] = trigPowerReduce(pr,vars,exp,c,s)
+
+        end
+        
+        
+        function [pr,Q,phi,y,basis] = buildDSOSDecompPrimal(pr,expr,options)
+            if ~spot_hasSize(expr,[1 1])
+                error('buildSOSDecomp expects a scalar polynomial.');
+            end
+
+            decvar = pr.variables;
+
+            phi = spotsosprog.buildGramBasis(expr,decvar,options);
+
+            [pr,Q] = pr.newDD(length(phi));
+    
             decvar = [decvar ; mss_s2v(Q)];
             sosCnst = expr-phi'*Q*phi;
 
@@ -249,7 +417,20 @@ classdef spotsosprog < spotprog
             pr = pr.withSOS(poly);
         end
         
-        function [pr] = withSOS(pr,expr)
+        function [pr,poly,coeff] = newDSOSPoly(pr,basis,n)
+          if nargin < 3, n = 1; end
+          
+          [pr,poly,coeff] = newFreePoly(pr,basis,n);
+          pr = pr.withDSOS(poly);
+        end
+        
+        function [pr,poly,coeff] = newSDSOSPoly(pr,basis,n)
+          if nargin < 3, n = 1; end
+          [pr,poly,coeff] = newFreePoly(pr,basis,n);
+          pr = pr.withSDSOS(poly);
+        end
+        
+        function [pr,conInd] = withSOS(pr,expr)
             if ~pr.isRealPolyLinearInDec(expr)
                 error(['Coefficients must be real, indeterminates ' ...
                        'non-trigonometric, and expression must ' ...
@@ -257,6 +438,40 @@ classdef spotsosprog < spotprog
             end
             tokens = length(pr.sosExpr) + (1:prod(size(expr)));
             pr.sosExpr = [ pr.sosExpr ; expr(:) ];
+            conInd = pr.numSOS;
+        end
+        
+        function [pr,conInd] = withDSOS(pr,expr)
+            if ~pr.isRealPolyLinearInDec(expr)
+                error(['Coefficients must be real, indeterminates ' ...
+                       'non-trigonometric, and expression must ' ...
+                      'be linear in decision variables.']);
+            end
+            tokens = length(pr.dsosExpr) + (1:prod(size(expr)));
+            pr.dsosExpr = [ pr.dsosExpr ; expr(:) ];
+            conInd = pr.numSOS + pr.numDSOS;
+        end
+        
+        function [pr,conInd] = withSDSOS(pr,expr)
+            if ~pr.isRealPolyLinearInDec(expr)
+                error(['Coefficients must be real, indeterminates ' ...
+                       'non-trigonometric, and expression must ' ...
+                      'be linear in decision variables.']);
+            end
+            tokens = length(pr.sdsosExpr) + (1:prod(size(expr)));
+            pr.sdsosExpr = [ pr.sdsosExpr ; expr(:) ];
+            conInd = pr.numSOS + pr.numDSOS + pr.numSDSOS;
+        end
+
+	function [pr,conInd] = withDiagSOS(pr,expr)
+            if ~pr.isRealPolyLinearInDec(expr)
+                error(['Coefficients must be real, indeterminates ' ...
+                       'non-trigonometric, and expression must ' ...
+                      'be linear in decision variables.']);
+            end
+            tokens = length(pr.diagsosExpr) + (1:prod(size(expr)));
+            pr.diagsosExpr = [ pr.diagsosExpr ; expr(:) ];
+            conInd = pr.numSOS + pr.numDSOS + pr.numSDSOS + pr.numDiagSOS;
         end
         
         function [pr] = withSOSMatrix(pr,expr)
@@ -285,20 +500,32 @@ classdef spotsosprog < spotprog
             expr = expr(:);
             decvar = pr.variables;
             
-            [indet,pow,M] = decomp(expr,decvar);
+            [~,~,M] = decomp(expr,decvar);
             
-            monom = recomp(indet,pow,speye(size(pow,1)));
+            %monom = recomp(indet,pow,speye(size(pow,1)));
             
             [I,J,S] = find(M);
             
             [pr,y] = pr.withEqs(S);
             
-            basis = monom(J);
+            %basis = monom(J);
         end
         
         
         function n = numSOS(pr)
             n = length(pr.sosExpr);
+        end
+        
+        function n = numDSOS(pr)
+            n = length(pr.dsosExpr);
+        end
+        
+        function n = numSDSOS(pr)
+            n = length(pr.sdsosExpr);
+        end
+
+	function n = numDiagSOS(pr)
+            n = length(pr.diagsosExpr);
         end
         
         function n = numTrigSOS(pr)
@@ -329,6 +556,10 @@ classdef spotsosprog < spotprog
                 options = spotprog.defaultOptions;
             end
             
+            if ~isfield(options,'dualize')
+                options.dualize = false;
+            end
+            
             if options.dualize
                 error('Dualization not supported.');
                 Q = cell(pr.numSOS,1);
@@ -341,27 +572,151 @@ classdef spotsosprog < spotprog
                 
                 sol = minimize@spotprog(pr,varargin{:});
             else
-                Q = cell(pr.numSOS+pr.numTrigSOS,1);
-                phi = cell(pr.numSOS+pr.numTrigSOS,1);
-                y   = cell(pr.numSOS+pr.numTrigSOS,1);
-                basis   = cell(pr.numSOS+pr.numTrigSOS,1);
+                dsosOff = pr.numSOS;
+                sdsosOff = dsosOff + pr.numDSOS;
+		diagsosOff = sdsosOff + pr.numDiagSOS;
+                trigOff = diagsosOff + pr.numSDSOS;
+                totalSOS = trigOff + pr.numTrigSOS;
+                Q = cell(totalSOS,1);
+                phi = cell(totalSOS,1);
+                y   = cell(totalSOS,1);
+                basis   = cell(totalSOS,1);
                 for i = 1:pr.numSOS
-                    [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompPrimal(pr.sosExpr(i));
+                    [pr,Q{i},phi{i},y{i},basis{i},eqMultFac] = pr.buildSOSDecompPrimal(pr.sosExpr(i),@newPSD,options);
+                    pr.gramMatrices{i} = eqMultFac*Q{i};
+                    pr.gramMonomials{i} = phi{i};
                 end
-                
+                for i = 1:pr.numDSOS
+                    ioff = i + dsosOff;
+                    if isfield(options,'basis_scale')
+                      options.basis_scale_i = options.basis_scale{i};
+                    end
+                    [pr,Q{ioff},phi{ioff},y{ioff},basis{ioff},eqMultFac] = pr.buildSOSDecompPrimal(pr.dsosExpr(i),@newDD,options);
+                    pr.gramMatrices{ioff} = eqMultFac*Q{ioff}; 
+                    pr.gramMonomials{ioff} = phi{ioff};
+                end
+                for i = 1:pr.numSDSOS
+                    ioff = i + sdsosOff;
+                    [pr,Q{ioff},phi{ioff},y{ioff},basis{ioff},eqMultFac] = pr.buildSOSDecompPrimal(pr.sdsosExpr(i),@newSDD,options);
+                    pr.gramMatrices{ioff} = eqMultFac*Q{ioff};
+                    pr.gramMonomials{ioff} = phi{ioff};
+                end
+		for i = 1:pr.numDiagSOS
+                    ioff = i + diagsosOff;
+                    [pr,Q{ioff},phi{ioff},y{ioff},basis{ioff},eqMultFac] = pr.buildSOSDecompPrimal(pr.diagsosExpr(i),@newDiag,options);
+                    pr.gramMatrices{ioff} = eqMultFac*Q{ioff};
+                    pr.gramMonomials{ioff} = phi{ioff};
+                end
                 for i = 1:pr.numTrigSOS
-                    ii = pr.numSOS + pr.numTrigSOS;
+                    ioff = i + trigOff;
                     t = pr.sosTrigExpr{i};
-                    [pr,Q{ii},phi{ii},y{ii},basis{ii}] = pr.buildSOSTrigDecomp(t{:});
+                    [pr,Q{ioff},phi{ioff},y{ioff},basis{ioff}] = pr.buildSOSTrigDecomp(t{:});
                 end
                 
                 sol = minimize@spotprog(pr,varargin{:});
             end
         end
+        
+%         function sol = minimizeDSOS(pr,varargin)
+%         %
+%         % sol = minimize(pr,pobj,solver,options)
+%         %
+%             if nargin >= 4,
+%                 options = varargin{3};
+%             else
+%                 options = spotprog.defaultOptions;
+%             end
+%             
+%             if ~isfield(options,'dualize')
+%                 options.dualize = false;
+%             end
+%             
+%             if options.dualize
+%                 error('Dualization not supported.');
+%                 Q = cell(pr.numSOS,1);
+%                 phi = cell(pr.numSOS,1);
+%                 y   = cell(pr.numSOS,1);
+%                 basis   = cell(pr.numSOS,1);
+%                 for i = 1:pr.numSOS
+%                     [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompDual(pr.sosExpr(i));
+%                 end
+%                 
+%                 sol = minimizeDSOS@spotprog(pr,varargin{:});
+%             else
+%                 if pr.numTrigSOS > 0
+%                     error('Trig sos not supported for (s)dsos')
+%                 end
+%                 
+%                 Q = cell(pr.numDSOS+pr.numTrigSOS,1);
+%                 phi = cell(pr.numDSOS+pr.numTrigSOS,1);
+%                 y   = cell(pr.numDSOS+pr.numTrigSOS,1);
+%                 basis   = cell(pr.numDSOS+pr.numTrigSOS,1);
+%                 for i = 1:pr.numDSOS
+%                     [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildDSOSDecompPrimal(pr.dsosExpr(i),[],options);
+%                 end
+%                 
+%                 for i = 1:pr.numTrigSOS
+%                     ii = pr.numSOS + pr.numTrigSOS;
+%                     t = pr.sosTrigExpr{i};
+%                     [pr,Q{ii},phi{ii},y{ii},basis{ii}] = pr.buildSOSTrigDecomp(t{:});
+%                 end
+%                 
+%                 sol = minimizeDSOS@spotprog(pr,varargin{:});
+%             end
+%         end
+%         
+%         function sol = minimizeSDSOS(pr,varargin)
+%         %
+%         % sol = minimize(pr,pobj,solver,options)
+%         %
+%             if nargin >= 4,
+%                 options = varargin{3};
+%             else
+%                 options = spotprog.defaultOptions;
+%             end
+%             
+%             if ~isfield(options,'dualize')
+%                 options.dualize = false;
+%             end
+%             
+%             if options.dualize
+%                 error('Dualization not supported.');
+%                 Q = cell(pr.numSOS,1);
+%                 phi = cell(pr.numSOS,1);
+%                 y   = cell(pr.numSOS,1);
+%                 basis   = cell(pr.numSOS,1);
+%                 for i = 1:pr.numSOS
+%                     [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompDual(pr.sosExpr(i));
+%                 end
+%                 
+%                 sol = minimizeSDSOS@spotprog(pr,varargin{:});
+%             else
+%                 if pr.numTrigSOS > 0
+%                     error('Trig sos not supported for (s)dsos')
+%                 end
+%                 
+%                 Q = cell(pr.numSDSOS+pr.numTrigSOS,1);
+%                 phi = cell(pr.numSDSOS+pr.numTrigSOS,1);
+%                 y   = cell(pr.numSDSOS+pr.numTrigSOS,1);
+%                 basis   = cell(pr.numSDSOS+pr.numTrigSOS,1);
+%                 for i = 1:pr.numSDSOS
+%                     [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSDSOSDecompPrimal(pr.sdsosExpr(i));
+%                 end
+%                 
+%                 for i = 1:pr.numTrigSOS
+%                     ii = pr.numSOS + pr.numTrigSOS;
+%                     t = pr.sosTrigExpr{i};
+%                     [pr,Q{ii},phi{ii},y{ii},basis{ii}] = pr.buildSOSTrigDecomp(t{:});
+%                 end
+%                 
+%                 sol = minimizeSDSOS@spotprog(pr,varargin{:});
+%             end
+%         end
+        
     end
     
     methods (Access = private, Static)
-        function phi = buildGramBasis(expr,decvar)
+        function phi = buildGramBasis(expr,decvar,options)
             if ~spot_hasSize(expr,[1 1])
                 error('buildGramBasis expects a scalar polynomial.');
             end
@@ -377,11 +732,33 @@ classdef spotsosprog < spotprog
                 return;
             end
 
-            pow = pow(:,b);
+            pow = pow(:,b); 
 
             exponent_m = spot_build_gram_basis(pow);
-    
+            
             phi = recomp(indet,exponent_m,speye(size(exponent_m,1)));
+        
+            % Scaled monomial basis
+            if ~isfield(options,'scale_monomials'); options.scale_monomials = false; end
+            
+            if options.scale_monomials
+                % Compute degrees of monomials
+                ds = sum(exponent_m,2);
+                fds = factorial(ds);
+                
+                % Compute multinomial coefficients
+                alphas = prod(factorial(exponent_m),2);
+                
+                % Compute scalings
+                cs = sqrt(fds./alphas);
+                
+                % Apply scaling to phi vector
+                phi = cs.*phi; 
+            end
+        
+            if isfield(options,'basis_scale_i')
+              phi = options.basis_scale_i*phi;
+            end
         end
     end
 end

@@ -1,6 +1,9 @@
 function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     if nargin < 5, options = spot_sdp_default_options(); end
     
+    y = [];
+    z = [];
+    
     sedumi_options = struct('fid',options.verbose);
     
     [n,nf,nl,nq,nr,ns] = spot_sdp_cone_dim(K);
@@ -152,7 +155,7 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
 
         end
     else
-        x = NaN*ones(n,1);
+        x = []; % NaN*ones(n,1);
     end
     
     if ~info.dualInfeasible
