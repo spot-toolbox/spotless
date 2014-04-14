@@ -1,4 +1,4 @@
-function flg = hasSize(v,sz)
+function flg = spot_hasSize(v,sz)
     if length(size(v)) ~= length(sz)
         flg = 0;
     else

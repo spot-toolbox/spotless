@@ -7,7 +7,6 @@ function D = spot_vecBlkDiag(V)
 %  Creates a block diagonal matrix with the i-th block
 %  being mss_v2s(V(:,i))
     
-    [i,j,s] = find(V);
     d = size(V,1);
     N = size(V,2);
     [n,err] = spot_psdNoToDim(d);

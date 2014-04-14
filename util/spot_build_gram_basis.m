@@ -1,6 +1,5 @@
 function [mpow,coeffIndxPos,coeffIndxZero] = spot_build_gram_basis(pow,mpow)
   
-    M = size(pow,2);
     pow = full(pow);
     
     if nargin < 2 
