@@ -1,4 +1,4 @@
-function q=recomp(x,p,M,sz)
+function q=recomp(x, p, M, sz)
 %  q=recomp(x,p,M)
 %
 %
@@ -13,7 +13,7 @@ function q=recomp(x,p,M,sz)
 %  p = M*repmat(x',m,1).^p;
 
 if nargin < 2, error('2 inputs required.'); end
-
+if nargin < 4, sz = [size(M,1) 1]; end
 
 [free,xn] = isfree(x);
 if ~free
@@ -39,8 +39,12 @@ elseif length(x) ~= size(p,2)
     error('powers and variables do not have matching dimensions.');
 end
 
-if isempty(x), 
-    q = M;
+if isempty(x),
+    if isempty(M),
+        q = sparse(sz(1), sz(2));
+    else
+        q = reshape(M, sz);
+    end
 else
     N = size(M,1);
     
