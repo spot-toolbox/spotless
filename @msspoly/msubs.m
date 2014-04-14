@@ -36,6 +36,11 @@ if size(v,1) ~= size(x,1)
     error('Second / Third argument dimension mismatch.');
 end
 
+if isa(p, 'double')
+    q = repmat(p, 1, size(v,2));
+    return;
+end
+
 % Find the variables not assigned.
 z = decomp(p);      % all variables in p.
 [~,xp] = isfree(z); % variable ids in p.
