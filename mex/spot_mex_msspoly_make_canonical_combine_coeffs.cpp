@@ -5,8 +5,7 @@
 
 #include "spot_mex_helpers.h"
 
-inline bool rowMatch(double *a, int ra, double *b, int rb, int m, int n)
-{
+inline bool rowMatch(double *a, int ra, double *b, int rb, int m, int n) {
   int j;
   for(j = 0; j < n ; j++){
     if(a[j*m+ra] != b[j*m+rb])
@@ -15,9 +14,8 @@ inline bool rowMatch(double *a, int ra, double *b, int rb, int m, int n)
   return 1;
 }
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
-{
-  /*  [keyOut,valOut,k] = spot_mex_msspoly_make_canonical_combine_coeff(key,val)
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
+  /*  [k, keyOut, valOut] = spot_mex_msspoly_make_canonical_combine_coeff(key, val)
    *
    *  key   -- m-by-n array, identical rows must be contiguous (e.g. key is sorted)
    *  val   -- m-by-1 array
@@ -39,12 +37,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   double *valI;
 
   // Take in arguments.
-  getArgSized(&mx_key,"double",0,nrhs,prhs,-1,-1);
+  getArgSized(&mx_key, "double", 0, nrhs, prhs, -1, -1);
   key = mxGetPr(mx_key);
   m = mxGetM(mx_key);
   n = mxGetN(mx_key);
 
-  getArgSized(&mx_val,"double",1,nrhs,prhs,m,1);
+  getArgSized(&mx_val, "double", 1, nrhs, prhs, m, 1);
   valR = mxGetPr(mx_val);
   valI = mxGetPi(mx_val);
 

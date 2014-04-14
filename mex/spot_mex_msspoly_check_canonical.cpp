@@ -3,44 +3,13 @@
 #include <mex.h>
 #include <time.h>
 
-
-inline bool isInt(double value)
-{
-  double intpart;
-  return modf(value,&intpart) == 0.0;
-}
-
-const int TEST_NONNEG = 1;
-const int DONT_TEST_NONNEG = 0;
-
-inline bool isTrigId(int v)
-{
-  return v%2;
-}
-
-inline bool isIntArray(const int cnt, const double *values, const bool testPos)
-{
-  int i;
-  double intpart;
-  for(i = 0; i < cnt; i++){
-    if(!isInt(values[i]))
-      return 0;
-    if (testPos == TEST_NONNEG){
-      if(values[i] < 0.0)
-	return 0;
-    }
-  }
-  return 1;
-}
-
-
 int generateErrorCode(const mxArray *prhs[]);
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
-    /*  errno = spot_mex_msspoly_check_dimensions(dim,sub,var,pow,coeff)
+    /*  errno = spot_mex_msspoly_check_canonical(dim, sub, var, pow, coeff)
      *
-     *  [errno,v] = ...;
+     *  [errno, v] = ...;
      *
      *  v -- 1 if there is a value error.
      *
@@ -79,7 +48,31 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   }
 }
 
+inline bool isInt(double value) {
+  double intpart;
+  return modf(value, &intpart) == 0.0;
+}
 
+const int TEST_NONNEG = 1;
+const int DONT_TEST_NONNEG = 0;
+
+inline bool isTrigId(int v) {
+  return v % 2;
+}
+
+inline bool isIntArray(const int cnt, const double *values, const bool testPos) {
+  int i;
+  double intpart;
+  for(i = 0; i < cnt; i++){
+    if(!isInt(values[i]))
+      return 0;
+    if (testPos == TEST_NONNEG) {
+      if (values[i] < 0.0)
+	return 0;
+    }
+  }
+  return 1;
+}
 
 int generateErrorCode(const mxArray *prhs[])
 {
