@@ -8,7 +8,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     
 
     % First add the non-semidefinite cones.
-    [r,res] = mosekopt('symbcon');
+    evalc('[r,res] = mosekopt(''symbcon'');');
     
     nn = nf+nl+nq+nr;
     prob = struct();
@@ -102,7 +102,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     if options.verbose
         [r,res] = mosekopt(cmd,prob);
     else
-        [info.console,r,res] = evalc('mosekopt(cmd,prob)');
+        [info.console,r,res] = evalc('mosekopt(cmd, prob);');
     end
     [info.ctime,info.wtime] = spot_etime(spot_now(),start);
 
