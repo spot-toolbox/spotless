@@ -11,14 +11,25 @@ classdef spotprogsol
         y = [];
         z = [];
         info = struct();
-        primalInfeasible = [];
-        dualInfeasible = [];
+        status = spotsolstatus.STATUS_UNSOLVED
         prog = [];
         objective = [];
         dualize = 0;
         variables = [];
     end
-    
+
+    methods (Static)
+        function feas = statusIsPrimalFeasible(status)
+            feas = (status == spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE ...
+                    | status == spotsolstatus.STATUS_DUAL_INFEASIBLE);
+        end
+
+        function feas = statusIsDualFeasible(status)
+            feas = (status == spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE ...
+                    | status == spotsolstatus.STATUS_PRIMAL_INFEASIBLE);
+        end
+    end
+
     methods
         function sol = spotprogsol(prog,objective,x,y,z,info,dualize)
             if ~prog.isPrimalWithFree()
@@ -30,13 +41,20 @@ classdef spotprogsol
             sol.y = y;
             sol.z = z;
             sol.info = info;
-            sol.primalInfeasible = info.primalInfeasible;
-            sol.dualInfeasible = info.dualInfeasible;
+            sol.status = info.status;
             sol.objective = objective;
             if nargin < 7, dualize = 0; end
             sol.dualize = dualize;
         end
-        
+
+        function feas = isPrimalFeasible(sol)
+            feas = spotprogsol.statusIsPrimalFeasible(sol.status);
+        end
+
+        function feas = isDualFeasible(sol)
+            feas = spotprogsol.statusIsDualFeasible(sol.status);
+        end
+
         function err = dimacs(sol)
             [P,A,b,c,K,d] = sol.prog.toSedumi(sol.objective);
             nf = sol.prog.numFree;
@@ -45,23 +63,25 @@ classdef spotprogsol
         end
 
         function e = eval(sol,expr)
-            if sol.primalInfeasible,
+            if ~sol.isPrimalFeasible(),
                 error('Cannot evaluate: primal infeasible.'); 
             end
-           if sol.dualize, e = sol.solDualEval(expr);
-           else, e = sol.solPrimalEval(expr);
+            if sol.dualize,
+                e = sol.solDualEval(expr);
+            else, 
+                e = sol.solPrimalEval(expr);
            end
         end
-        
+
         function e = dualEval(sol,expr)
             if sol.dualize, e = sol.solPrimalEval(expr);
             else, e = sol.solDualEval(expr);
             end
-        end        
+        end
     end
     methods (Access = private)
         function e = solPrimalEval(sol,expr)
-            if sol.primalInfeasible,
+            if ~sol.isPrimalFeasible(),
                 error('Cannot evaluate: primal infeasible.'); 
             end
 
@@ -69,9 +89,9 @@ classdef spotprogsol
                      sol.prog.variables,...
                      sol.prog.decToVar(sol.x));
         end
-        
+
         function e = solDualEval(sol,expr)
-            if sol.dualInfeasible,
+            if ~sol.isDualFeasible,
                 error('Cannot evaluate: dual infeasible.'); 
             end
 

@@ -1,0 +1,11 @@
+classdef spotsolstatus
+    enumeration
+        STATUS_UNSOLVED,
+        STATUS_SOLVER_ERROR,
+        STATUS_PRIMAL_AND_DUAL_FEASIBLE,
+        STATUS_DUAL_INFEASIBLE,
+        STATUS_PRIMAL_INFEASIBLE,
+        STATUS_PRIMAL_AND_DUAL_INFEASIBLE,
+        STATUS_NUMERICAL_PROBLEMS
+    end
+end

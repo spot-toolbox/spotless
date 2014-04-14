@@ -98,30 +98,32 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
         param = struct();
     end
     
-
     start = spot_now();
-    [r,res] = mosekopt(cmd,prob,param);
+    if options.verbose
+        [r,res] = mosekopt(cmd,prob);
+    else
+        [info.console,r,res] = evalc('mosekopt(cmd,prob)');
+    end
     [info.ctime,info.wtime] = spot_etime(spot_now(),start);
 
-    switch res.sol.itr.prosta
-      case 'PRIMAL_AND_DUAL_FEASIBLE',
-        info.primalInfeasible = 0;
-        info.dualInfeasible   = 0;
-      case 'PRIMAL_INFEASIBLE',
-        info.primalInfeasible = 1;
-        info.dualInfeasible = 0;
-      case 'DUAL_INFEASIBLE',
-        info.dualInfeasible = 1;
-        info.primalInfeasible = 0;
-      case 'PRIMAL_AND_DUAL_INFEASIBLE',
-        info.primalInfeasible = 0;
-        info.dualInfeasible = 1;
-      case 'UNKNOWN',
-        info.primalInfeasible = 0;
-        info.dualInfeasible = 0;
+    if ~isfield(res, 'sol')
+        status = spotsoltype.STATUS_SOLVER_ERROR;
+    else
+        switch res.sol.itr.prosta
+          case 'PRIMAL_AND_DUAL_FEASIBLE',
+            status = spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE;
+          case 'PRIMAL_INFEASIBLE',
+            status = spotsolstatus.STATUS_PRIMAL_INFEASIBLE;
+          case 'DUAL_INFEASIBLE',
+            status = spotsolstatus.STATUS_DUAL_INFEASIBLE;
+          case 'PRIMAL_AND_DUAL_INFEASIBLE',
+            status = spotsolstatus.STATUS_PRIMAL_AND_DUAL_INFEASIBLE;
+          case 'UNKNOWN',
+            status = spotsolstatus.STATUS_NUMERICAL_PROBLEMS;
+        end
     end
-    
-    if ~info.primalInfeasible,
+
+    if spotprogsol.statusIsPrimalFeasible(status)
         x = res.sol.itr.xx;
         if ~isempty(K.s)
             barx = zeros(ns,1);
@@ -161,14 +163,16 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
         x = NaN*ones(n,1);
     end
     
-    if ~info.dualInfeasible
+    if spotprogsol.statusIsDualFeasible(status)
         y = res.sol.itr.y;
         z = c-A'*y;
+    else
+        y = NaN*ones();
+        z = NaN*ones();
     end
     
     info.solverName = 'mosek';
     info.solverInfo = res.sol;
-    if ~info.primalInfeasible & ~info.dualInfeasible
-        info.dimacs = spot_sdp_dimacs(A,b,c,K,x,y,z);
-    end
+    info.status = status;
+
 end

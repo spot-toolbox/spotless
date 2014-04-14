@@ -18,9 +18,22 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     
     z = spot_sdp_cone_symm(c - A'*y,K);
     
-    info.primalInfeasible = s_info.pinf;
-    info.dualInfeasible   = s_info.dinf;
+    if s_info.pinf & s_info.dinf
+        status = spotsolstatus.STATUS_PRIMAL_AND_DUAL_INFEASIBLE;
+    elseif s_info.pinf
+        status = spotsolstatus.STATUS_PRIMAL_INFEASIBLE;
+    elseif s_info.dinf
+        status = spotsolstatus.STATUS_DUAL_INFEASIBLE;
+    else
+        status = spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE;
+    end
+    
+    if s_info.numerr > 0
+        status = spotsolstatus.STATUS_NUMERICAL_PROBLEMS;
+    end
+
+    info.status = status;
     info.solverName = 'sedumi';
     info.solverInfo = s_info;
-    info.dimacs = spot_sdp_dimacs(A,b,c,K,x,y,z);
+    %info.dimacs = spot_sdp_dimacs(A,b,c,K,x,y,z);
 end
