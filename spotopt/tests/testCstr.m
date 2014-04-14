@@ -1,4 +1,4 @@
-function [] = testCstr(prorig,solver,logger)
+function [] = testCstr(prorig,solver)
 %
 %  This is an automated testing script.
 %
@@ -7,9 +7,6 @@ function [] = testCstr(prorig,solver,logger)
 %  Tests all programs together, and each individually, then certain
 %  random collections.
 %
-    
-    if nargin < 3, logger = @disp; end
-    
     listing = what('testCstr');
     mFiles = listing.m;
     
@@ -39,10 +36,10 @@ function [] = testCstr(prorig,solver,logger)
     J = find(tol <= abs(zero));
     
     if length(J) > 0,
-        logger(sprintf('Primal combined test failed:'));
+        disp(sprintf('Primal combined test failed:'));
     end
     for j = 1:length(J)
-        logger(sprintf('\tTest %s: combined (%d > %d).',...
+        disp(sprintf('\tTest %s: combined (%d > %d).',...
                        mFiles{J(j)},...
                        zero(J(j)),tol(J(j))));
     end
@@ -51,10 +48,10 @@ function [] = testCstr(prorig,solver,logger)
     J = find(tol <= abs(zero));
 
     if length(J) > 0,
-        logger(sprintf('Dual combined test failed:'));
+        disp(sprintf('Dual combined test failed:'));
     end
     for j = 1:length(J)
-        logger(sprintf('\tTest %s: combined (%d > %d).',...
+        disp(sprintf('\tTest %s: combined (%d > %d).',...
                        mFiles{J(j)},...
                        zero(J(j)),tol(J(j))));
     end
@@ -66,14 +63,14 @@ function [] = testCstr(prorig,solver,logger)
         
         zero = double(sol.eval(zero));
         if abs(zero) > tol
-            logger(sprintf('\tIndependent test %s failed:  (%d > %d).',...
+            disp(sprintf('\tIndependent test %s failed:  (%d > %d).',...
                            mFiles{J(j)},zero,tol));
         end
         [dl,dobj] = pr.toDual(obj);
         dsol = dl.minimize(-dobj,solver);
         zero = double(dsol.dualEval(zero));
         if abs(zero) > tol
-            logger(sprintf('\tIndependent dual test %s failed:  (%d > %d).',...
+            disp(sprintf('\tIndependent dual test %s failed:  (%d > %d).',...
                            mFiles{J(j)},zero,tol));
         end
 
@@ -97,19 +94,21 @@ function [] = testCstr(prorig,solver,logger)
         zero = double(sol.eval(zero));
         J = find(tol <= abs(double(sol.eval(zero))));
         if length(J) > 0
-            logger(sprintf('\tRandom combination %s failed.',...
-                           name));
+            disp(sprintf('\tRandom combination %s failed.',...
+                         name));
+            disp(sprintf('\t  tol: %s', num2str(tol')))
+            disp(sprintf('\t  val: %s', num2str(double(sol.eval(zero))')))
         end
-        
+
         [dl,dobj] = pr.toDual(sum(obj));
         dsol = dl.minimize(-dobj,solver);
         zero = double(dsol.dualEval(zero));
         J = find(tol <= abs(double(dsol.dualEval(zero))));
         if length(J) > 0
-            logger(sprintf('\tRandom dual combination %s failed.',...
+            disp(sprintf('\tRandom dual combination %s failed.',...
                            name));
+            disp(sprintf('\t  tol: %s', num2str(tol')))
+            disp(sprintf('\t  val: %s', num2str(double(sol.eval(zero))')))
         end
     end
-    
-    
 end

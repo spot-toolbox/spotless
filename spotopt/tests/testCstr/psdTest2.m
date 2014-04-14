@@ -17,5 +17,5 @@ function [pr,obj,zero,tol] = psdTest2(pr)
     
     obj = (trace(W1)+trace(W2))/2;
     zero = obj - sum(svd(A));
-    tol  = 1e-8*sum(svd(A));
+    tol  = 1e-7*sum(svd(A));
 end
