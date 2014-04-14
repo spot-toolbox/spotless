@@ -21,8 +21,6 @@ switch s.type,
                 end
             case 'sos',
                 pr=sos(pr0,w);
-            case 'bsos',
-                pr=bsos(pr0,w);
             case 'sss',
                 pr=sss(pr0,w);
             case 'sedumi',
