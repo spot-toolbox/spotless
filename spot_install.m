@@ -12,6 +12,7 @@ addpath([potdir s 'mex']);
 addpath([potdir s 'util']);
 addpath([potdir s 'spotopt']);
 addpath([potdir s 'spotopt/util']);
+addpath([potdir s 'spotopt/solvers']);
 addpath([potdir s 'mss']);
 fprintf('\n compiling the binaries...')
 cd('mex');
