@@ -16,11 +16,11 @@ c=double(c(2:mv+1));
 if all(c(:)==0),
     error('2nd argument is a constant');
 end
-[l,e]=linear(p.e,p.v);
+[l,BA]=linear(p.e,p.v);
+BA = double(BA);
 if ~l
     error('equality constraints not linear in decision variables'); 
 end
-BA=sparse(e);
 nf=length(p.o(p.t==1)); if nf>0, K.f=nf; end
 nl=length(p.o(p.t==2)); if nl>0, K.l=nl; end
 if ~isempty(p.q), K.q=p.q; end
