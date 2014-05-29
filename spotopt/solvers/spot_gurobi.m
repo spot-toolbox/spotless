@@ -1,4 +1,4 @@
-function [x,y,z,info] = spot_gurobi_sdsos(A,b,c,K,options)
+function [x,y,z,info] = spot_gurobi(A,b,c,K,options)
 
 if  isfield(options,'solveroptions')
     options = options.solveroptions;
@@ -20,6 +20,8 @@ end
 
 if isempty(K.s)
     K.s = 0;
+else
+  error('Gurobi does not support semidefinite constraints')
 end
 
 if isempty(K.f)
@@ -47,20 +49,41 @@ end
 
 % model.cones = pr.cones;
 
-sprintf('\nDone setting up problem. Running SOCP now...');% keyboard;
+sprintf('\nDone setting up problem. Running Gurobi now...');% keyboard;
 
 tic
 output = gurobi(model,options);
 info.runtime = toc;
-if strcmp(output.status,'OPTIMAL') % || strcmp(output.status,'NUMERIC')
-    info.primalInfeasible = 0;
-    info.dualInfeasible = 0;
-    x = output.x;
-    info.runtime = output.runtime;
+
+switch output.status
+  case 'LOADED'
+  case 'INTERRUPTED'
+  case 'IN_PROGRESS'
+    status = spotsolstatus.STATUS_UNSOLVED;
+  case 'OPTIMAL',
+    status = spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE;
+  case 'INFEASIBLE'
+    status = spotsolstatus.STATUS_PRIMAL_INFEASIBLE;
+  case 'UNBOUNDED'
+    status = spotsolstatus.STATUS_DUAL_INFEASIBLE;
+  case 'CUTOFF'
+  case 'NUMERIC'
+  case 'SUBOPTIMAL'
+    status = spotsolstatus.STATUS_NUMERICAL_PROBLEMS;
+  case 'INF_OR_UNBND'
+  case 'ITERATION_LIMIT'
+  case 'NODE_LIMIT'
+  case 'TIME_LIMIT'
+  case 'SOLUTION_LIMIT'
+    status = spotsolstatus.STATUS_SOLVER_ERROR;
+end
+info.status = status;
+info.runtime = output.runtime;
+
+if isfield(output,'x')
+  x = output.x;
 else
-    info.primalInfeasible = 1;
-    info.dualInfeasible = 1;
-    x = [];
+  x = [];
 end
 
 y = []; % I need to FIX THESE
