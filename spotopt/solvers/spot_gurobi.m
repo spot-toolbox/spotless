@@ -10,18 +10,12 @@ if isempty(K.l)
     K.l = 0;
 end
 
-if isempty(K.q)
-    K.q = 0;
-end
-
-if isempty(K.r)
-    K.r = 0;
-end
-
-if isempty(K.s)
-    K.s = 0;
-else
+if ~isempty(K.s)
   error('Gurobi does not support semidefinite constraints')
+end
+
+if ~isempty(K.r)
+  error('spot_gurobi does not support semidefinite constraints (to be implemented)')
 end
 
 if isempty(K.f)
@@ -29,7 +23,7 @@ if isempty(K.f)
 end
 
 
-lv = K.l + sum(K.q) + K.r + K.s + K.f; % keyboard;
+lv = K.l + sum(K.q) + sum(K.r) + sum(K.s.^2) + K.f; % keyboard;
 
 % Create LP inequality matrices (Aineq*x <= bineq)
 Aineq = sparse(K.f+(1:K.l)',K.f+(1:K.l)',-ones(K.l,1),lv,lv);
