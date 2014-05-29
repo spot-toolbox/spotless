@@ -160,7 +160,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
 
         end
     else
-        x = []; % NaN*ones(n,1);
+        x = NaN*ones(n,1);
     end
     
     if spotprogsol.statusIsDualFeasible(status)

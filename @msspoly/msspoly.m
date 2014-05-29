@@ -60,9 +60,9 @@ classdef (InferiorClasses = {?double}) msspoly
                   case 'msspoly',
                     p = x;
                   case 'double',
-%                     if any(isnan(x(:)) | isinf(x(:)))
-%                         error('infinite coefficients not permitted');
-%                     end
+                    if any(isnan(x(:)) | isinf(x(:)))
+                        error('infinite coefficients not permitted');
+                    end
                     p.dim = size(x);
                     [ii,jj,cc]=find(x);
                     p.sub = [ii(:) jj(:)];
@@ -101,11 +101,7 @@ classdef (InferiorClasses = {?double}) msspoly
                 p.sub = full(y);
                 p.var = full(z);
                 p.pow = full(a);
-                if isa(b,'msspoly')
-                  p.coeff = b;
-                else
-                  p.coeff = full(b);
-                end
+                p.coeff = full(b);
                 p = p.make_canonical();
               otherwise,
                 error('Unsupported arguments.');

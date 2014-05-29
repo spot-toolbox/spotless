@@ -51,11 +51,8 @@ else
     if nargin < 4, sz = [N 1]; end
     
     if prod(sz) ~= N, error('Size mismatch.'); end
-    if isa(M,'msspoly')
-      nz = (1:length(M))';
-    else
-      nz = reshape(find(M ~= 0),[],1);
-    end
+    
+    nz = reshape(find(M ~= 0),[],1);
     [I,J] = ind2sub(size(M),nz);
     
     vs = repmat(xn',length(J),1);
