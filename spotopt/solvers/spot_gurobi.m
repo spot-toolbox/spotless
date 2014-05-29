@@ -66,7 +66,13 @@ switch output.status
     status = spotsolstatus.STATUS_SOLVER_ERROR;
 end
 info.status = status;
-info.runtime = output.runtime;
+
+if isfield(output,'runtime')
+  info.runtime = output.runtime;
+else
+  %sometimes Gurobi doesn't output a runtime
+  info.runtime = NaN;
+end
 
 if isfield(output,'x')
   x = output.x;
