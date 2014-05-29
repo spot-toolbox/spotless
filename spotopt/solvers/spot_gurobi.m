@@ -50,9 +50,7 @@ output = gurobi(model,options);
 info.runtime = toc;
 
 switch output.status
-  case 'LOADED'
-  case 'INTERRUPTED'
-  case 'IN_PROGRESS'
+  case {'LOADED', 'INTERRUPTED', 'IN_PROGRESS'}
     status = spotsolstatus.STATUS_UNSOLVED;
   case 'OPTIMAL',
     status = spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE;
@@ -60,15 +58,11 @@ switch output.status
     status = spotsolstatus.STATUS_PRIMAL_INFEASIBLE;
   case 'UNBOUNDED'
     status = spotsolstatus.STATUS_DUAL_INFEASIBLE;
-  case 'CUTOFF'
-  case 'NUMERIC'
-  case 'SUBOPTIMAL'
+  case {'CUTOFF', 'NUMERIC', 'SUBOPTIMAL'}
     status = spotsolstatus.STATUS_NUMERICAL_PROBLEMS;
-  case 'INF_OR_UNBND'
-  case 'ITERATION_LIMIT'
-  case 'NODE_LIMIT'
-  case 'TIME_LIMIT'
-  case 'SOLUTION_LIMIT'
+  case {'INF_OR_UBND', 'ITERATION_LIMIT', 'NODE_LIMIT', 'TIME_LIMIT', 'SOLUTION_LIMIT'}
+    status = spotsolstatus.STATUS_SOLVER_ERROR;
+  otherwise
     status = spotsolstatus.STATUS_SOLVER_ERROR;
 end
 info.status = status;
