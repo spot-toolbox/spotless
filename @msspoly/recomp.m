@@ -61,10 +61,14 @@ else
     
     dim = sz;
     sub = [ R C ];%I ones(size(I)) ];
-    var = vs;
+%     var = vs;
     pow = full(p(J,:));
-    coeff = reshape(full(M(nz)),[],1);
+    if isa(M,'msspoly')
+      coeff = M;
+    else
+      coeff = reshape(full(M(nz)),[],1);
+    end
     
-    q = msspoly(dim,sub,var,pow,coeff);
+    q = msspoly(dim,sub,vs,pow,coeff);
 end
 end
