@@ -1,4 +1,4 @@
-function q=dmsubs(p,x,v)
+function [q,fn,Md,perm]=dmsubs(p,x,v)
 % function q=dmsubs(p,x,v)
 %
 %
@@ -50,28 +50,31 @@ end
 % Sort out indicies.
 [~,xdn] = isfree(xd);
 perm = mss_match(xn,xdn);
-
 perm = perm(perm ~= 0);
-% Second, generate matrix of evaluated monomials.
+
 if length(perm) ~= length(xd)
-    error('p must only be a function of x');
+  error('p must only be a function of x');
 end
 
-pd = pd';
-pd = pd(:);
-values = repmat(v(perm,:),po,1);
-values(pd(:) < 0,:) = conj(values(pd(:) < 0,:));
-pow = values.^repmat(abs(pd(:)),1,N); 
+% [~,I] = sort(perm);
+% pd = pd(:,I);
 
-sz = [po N];
-subs = repmat(1:prod(sz),n,1);
-
-mo = accumarray(subs(:),pow(:),[prod(sz) 1],@prod,[],true);
-
-q = Md*reshape(mo,sz);
-
+str = '@(coef,x) [';
+for k=1:size(Md,1),
+  for i=1:size(Md,2),
+    if i > 1,
+      str = [str '+'];
+    end
+    str = [str sprintf('coef(%d,%d)',k,i)];
+    for j=1:size(pd,2),
+      if pd(i,j) ~= 0
+        str = [str sprintf('.*x(%d,:).^%d',j,full(pd(i,j)))];
+      end
+    end
+  end
+  str = [str ';'];
 end
-
-
-
-
+str = [str ']'];
+fn = str2func(str);
+q = fn(Md,v(perm,:));
+end
