@@ -24,7 +24,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     end
     if ~isempty(K.r)
         prob.cones.type = [ prob.cones.type repmat(res.symbcon.MSK_CT_RQUAD,1,length(K.r))];
-        prob.cones.subptr = [ prob.cones.subptr nq+[0 cumsum(K.r(1:end-1))] ];
+        prob.cones.subptr = [ prob.cones.subptr 1+nq+[0 cumsum(K.r(1:end-1))] ];
         prob.cones.sub    = [ prob.cones.sub nf+nl+nq+(1:nr) ];
     end
     
