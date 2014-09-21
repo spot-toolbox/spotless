@@ -16,6 +16,12 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     prob.a = A(:,1:nn);
     prob.blc = full(b');
     prob.buc = full(b');
+    
+    if nr > 0
+        prob.cones.type = [];
+        prob.cones.subptr = [];
+        prob.cones.sub = [];
+    end
 
     if ~isempty(K.q)
         prob.cones.type = repmat(res.symbcon.MSK_CT_QUAD,1,length(K.q));
