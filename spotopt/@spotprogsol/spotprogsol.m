@@ -21,9 +21,9 @@ classdef spotprogsol
     end
 
     methods (Static)
-        function feas = statusIsPrimalFeasible(status)
+         function feas = statusIsPrimalFeasible(status)
             feas = (status == spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE ...
-                    | status == spotsolstatus.STATUS_DUAL_INFEASIBLE);
+                    | status == spotsolstatus.STATUS_DUAL_INFEASIBLE | status == spotsolstatus.STATUS_NUMERICAL_PROBLEMS);
         end
 
         function feas = statusIsDualFeasible(status)
