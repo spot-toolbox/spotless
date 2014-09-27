@@ -28,7 +28,7 @@ classdef spotprogsol
 
         function feas = statusIsDualFeasible(status)
             feas = (status == spotsolstatus.STATUS_PRIMAL_AND_DUAL_FEASIBLE ...
-                    | status == spotsolstatus.STATUS_PRIMAL_INFEASIBLE);
+                    | status == spotsolstatus.STATUS_PRIMAL_INFEASIBLE | status == spotsolstatus.STATUS_NUMERICAL_PROBLEMS);
         end
     end
 
