@@ -113,7 +113,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     [info.ctime,info.wtime] = spot_etime(spot_now(),start);
 
     if ~isfield(res, 'sol')
-        status = spotsoltype.STATUS_SOLVER_ERROR;
+        status = spotsolstatus.STATUS_SOLVER_ERROR;
     else
         switch res.sol.itr.prosta
           case 'PRIMAL_AND_DUAL_FEASIBLE',
