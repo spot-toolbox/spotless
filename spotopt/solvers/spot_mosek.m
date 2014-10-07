@@ -1,4 +1,29 @@
 function [x,y,z,info] = spot_mosek(A,b,c,K,options)
+
+
+    if ~isfield(K,'f') 
+        K.f = 0;
+    end
+
+    if ~isfield(K,'l') 
+        K.l = 0;
+    end
+
+    if ~isfield(K,'q') || all(K.q == 0)
+        K.q = [];
+    end
+
+    if ~isfield(K,'s') || all(K.s == 0)
+       K.s = [];
+    else
+       K.s = K.s(K.s ~= 0); 
+    end
+
+    if ~isfield(K,'r') || all(K.r == 0)
+        K.r = [];
+    end
+
+
     if nargin < 5, options = spot_sdp_default_options(); end
     
     
@@ -171,7 +196,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     
     if spotprogsol.statusIsDualFeasible(status)
         y = res.sol.itr.y;
-        z = c-A'*y;
+        z = c(:)-A'*y;
     else
         y = []; % NaN*ones();
         z = []; % NaN*ones();
