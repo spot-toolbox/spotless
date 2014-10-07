@@ -178,7 +178,9 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     end
     
     info.solverName = 'mosek';
-    info.solverInfo = res.sol;
+    if status ~= spotsolstatus.STATUS_SOLVER_ERROR
+        info.solverInfo = res.sol;
+    end
     info.status = status;
 
 end
