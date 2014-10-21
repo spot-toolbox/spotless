@@ -89,7 +89,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
         barc = c(nn+1:end);
         bara = A(:,nn+1:end);
         
-        [jj,~,val] = find(barc);
+        [jj,~,val] = find(barc(:));
         [j,k,l] = jklOf(K.s,jj');
         
         val(k ~= l) = val(k ~= l)/2;
