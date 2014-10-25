@@ -6,7 +6,7 @@ function [x,y,z,info] = spot_sedumi(A,b,c,K,options)
     if isfield(options.solver_options,'sedumi')
         sedumi_options = options.solver_options.sedumi;
     else
-        sedumi_options = struct('errors',1);
+        sedumi_options = struct('errors',0);
     end    
     if ~isfield(sedumi_options,'fid')
         sedumi_options.fid = options.verbose;
