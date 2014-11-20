@@ -20,9 +20,9 @@ options.scale_monomials = false;
 
 
 
-sol = prog.minimize(0, @spot_mosek_sdsos, options);
+sol = prog.minimize(0, @spot_mosek, options);
 
-if (~sol.primalInfeasible) && (~sol.dualInfeasible)
+if (sol.isPrimalFeasible) && (sol.isDualFeasible)
     issdsos = true;
     Q = sol.eval(sol.gramMatrices{ind1});
     phi = sol.gramMonomials{ind1};
