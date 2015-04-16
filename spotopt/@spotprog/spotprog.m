@@ -713,7 +713,7 @@ classdef spotprog
             % Enable removal of redundant equations.
             %[feas,E,F,g,U,V,w,Ad,bd,cd,Kd] = spot_sdp_remove_redundant_eqs(A,b,c,K);
             
-            if options.dualize
+            if 0
                 if ~prog.isStandardDualForm
                     error(['Sorry dualization is not supported.  ' ...
                            'Please write your program in standard ' ...
