@@ -8,9 +8,8 @@ if usefrlib
     end
     r = f.ReducePrimal(options.approx);
     r.PrintStats();
-    [xr,yr,info] = f.Solve();
-    z = [];
-    
+    [xr,yr,info] = r.Solve();
+    z = []; 
     [x,y] = r.Recover(xr,yr);
 else
     error('frlib not found!')
