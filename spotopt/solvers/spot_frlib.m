@@ -11,6 +11,12 @@ if usefrlib
     [xr,yr,info] = r.Solve();
     z = []; 
     [x,y] = r.Recover(xr,yr);
+    
+    
+    if ~isfield(info,'status')
+        info.status = [];
+    end
+    
 else
     error('frlib not found!')
 end
