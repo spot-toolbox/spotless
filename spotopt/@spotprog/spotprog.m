@@ -623,23 +623,57 @@ classdef spotprog
             if ~spotprog.isScalarDimension(dim)
                 error('dim must be a row of non-negative scalars.');
             end
+            
             ndim = spotprog.psdDimToNo(dim);
             
             [pr,Qvec] = pr.newFree(ndim);
             Q = mss_v2s(Qvec);
-                        
-                      
-           % Constrain Q to be in dual of DD (non-vectorized version)
-           n = length(Q);
-           pr = pr.withPos(diag(Q));
-           for i = 1:n
-               for j = [1:i-1, i+1:n] % j \neq i
-                   [pr,tau(i,j)] = pr.newFree(1);
-                   pr = pr.withPos(tau(i,j) - Q(i,j));
-                   pr = pr.withPos(tau(i,j) + Q(i,j));
-                   pr = pr.withPos(Q(i,i) + Q(j,j) - tau(i,j));
-               end
-           end
+            
+            n = dim;
+            % Vectors with at most two non-zero entries with +/-1.
+            V = zeros(n,n^2); % preallocate for speed
+            V(end-n+1:end,end-n+1:end)=eye(n);
+            cnt = 0;
+            for i=1:n-1
+                for j=i+1:n
+                    cnt = cnt+1;
+                    v1=zeros(n,1); v1(i)=1; v1(j)=1;
+                    v2=zeros(n,1); v2(i)=1; v2(j)=-1;
+                    V(:,2*cnt-1) = v1;
+                    V(:,2*cnt) = v2;
+                end
+            end
+            
+            % Setup the constraints in chunks (if we do it all at once it will eat up
+            % a huge amount of RAM).
+            chunkSize = 1000;
+            numChunks = ceil((n^2)/chunkSize);
+            chunkInds = 1 + [0:chunkSize:(numChunks-1)*chunkSize];
+            chunkInds = [chunkInds, n^2+1];
+            
+            for chunk = 1:length(chunkInds)-1
+                startInd = chunkInds(chunk);
+                endInd = chunkInds(chunk+1)-1;
+                
+                % Get chunk of V
+                V_chunk = V(:,startInd:endInd);
+                
+                % Setup constraint that V(:,k)'*Q*V(:,k) >=0, for k in chunk in vectorized way
+                pr = pr.withPos(sum(V_chunk.*(Q*V_chunk)));
+            end
+            
+            
+%            % Constrain Q to be in dual of DD (non-vectorized version)
+%            n = length(Q);
+%            pr = pr.withPos(diag(Q));
+%            for i = 1:n
+%                for j = [1:i-1, i+1:n] % j \neq i
+%                    [pr,tau(i,j)] = pr.newFree(1);
+%                    pr = pr.withPos(tau(i,j) - Q(i,j));
+%                    pr = pr.withPos(tau(i,j) + Q(i,j));
+%                    pr = pr.withPos(Q(i,i) + Q(j,j) - 2*tau(i,j));
+%                end
+%            end
            
            
         end
