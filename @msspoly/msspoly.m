@@ -60,7 +60,7 @@ classdef (InferiorClasses = {?double}) msspoly
                   case 'msspoly',
                     p = x;
                   case 'double',
-                    if any(isnan(x(:)) | isinf(x(:)))
+                    if any(any((isnan(x)) | isinf(x)))
                         error('infinite coefficients not permitted');
                     end
                     p.dim = size(x);
