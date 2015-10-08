@@ -138,6 +138,7 @@ function [x,y,z,info] = spot_mosek(A,b,c,K,options)
     [info.ctime,info.wtime] = spot_etime(spot_now(),start);
 
     if ~isfield(res, 'sol')
+        warning('Spotless:SpotMosek:MosekError', 'Mosek produced the following error message: "%s" (%s)', res.rmsg, res.rcodestr);
         status = spotsolstatus.STATUS_SOLVER_ERROR;
     else
         switch res.sol.itr.prosta
