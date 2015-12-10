@@ -94,9 +94,14 @@ classdef spotsosprog < spotprog
             
             % Build the Gram basis
             phi = spotsosprog.buildGramBasis(expr,decvar,options); 
+            sosPoly = 0;
             
-            [pr,Q] = newGram(pr,length(phi));
-            sosCnst = expr-phi'*Q*phi;
+            for i=1:length(phi)
+                [pr,Qi] = newGram(pr,length(phi{i}));
+                sosPoly = sosPoly + phi{i}'*Qi*phi{i};
+                Q{i} = Qi;
+            end
+            sosCnst = expr-sosPoly;
             
             decvar = pr.variables;
             
@@ -414,8 +419,8 @@ classdef spotsosprog < spotprog
         %
         % sol = minimize(pr,pobj,solver,options)
         %
-            if nargin >= 1
-                if ~ pr.isRealPolyLinearInDec(varargin{1})
+            if nargin > 1 
+                if ~ pr.isRealPolyLinearInDec(varargin{1}) 
                    error('Objective function must be linear in decision variables') 
                 end
             end
@@ -453,8 +458,8 @@ classdef spotsosprog < spotprog
                 y   = cell(totalSOS,1);
                 basis   = cell(totalSOS,1);
                 for i = 1:pr.numSOS
-                    [pr,Q{i},phi{i},y{i},basis{i},eqMultFac] = pr.buildSOSDecompPrimal(pr.sosExpr(i),@newPSD,options);
-                    pr.gramMatrices{i} = eqMultFac*Q{i};
+                    [pr,Q{i},phi{i},y{i},basis{i}] = pr.buildSOSDecompPrimal(pr.sosExpr(i),@newPSD,options);
+                    pr.gramMatrices{i} = Q{i};
                     pr.gramMonomials{i} = phi{i};
                 end
                 for i = 1:pr.numDSOS
@@ -510,29 +515,10 @@ classdef spotsosprog < spotprog
 
             exponent_m = spot_build_gram_basis(pow);
             
-            phi = recomp(indet,exponent_m,speye(size(exponent_m,1)));
-        
-            % Scaled monomial basis
-            if ~isfield(options,'scale_monomials'); options.scale_monomials = false; end
-            
-            if options.scale_monomials
-                % Compute degrees of monomials
-                ds = sum(exponent_m,2);
-                fds = factorial(ds);
-                
-                % Compute multinomial coefficients
-                alphas = prod(factorial(exponent_m),2);
-                
-                % Compute scalings
-                cs = sqrt(fds./alphas);
-                
-                % Apply scaling to phi vector
-                phi = cs.*phi; 
+            for i = 1:length(exponent_m)
+                phi{i} = recomp(indet,exponent_m{i},speye(size(exponent_m{i},1)));
             end
-        
-            if isfield(options,'basis_scale_i')
-              phi = options.basis_scale_i*phi;
-            end
+
         end
     end
 end
