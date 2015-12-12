@@ -75,7 +75,7 @@ if s % b is simple.
 elseif deg(p,a) <=1 
      % Polynomial is /linear/ in variables to be substituted.
      sz = size(p);
-     p = p(:);
+     p = reshape(p,[],1);
      
      pA = diff(p,a);
      pc = subs(p,a,0*a);
