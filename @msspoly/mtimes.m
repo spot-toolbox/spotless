@@ -21,8 +21,8 @@ if p1.dim(2) ~= p2.dim(1)
     end
 end
 
-sz1 = p1.dim;
-sz2 = p2.dim;
+sz1 = p1.dim(1);
+sz2 = p2.dim(2);
 
 if sz1 == 0 | sz2 == 0
    q = msspoly(sparse(sz1,sz2));
