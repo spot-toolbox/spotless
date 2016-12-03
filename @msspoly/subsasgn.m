@@ -31,7 +31,11 @@ switch s.type
     else
 
         switch length(s.subs)
-          case 1,
+          case 1
+            if(numel(s.subs{1}) == 0)
+              q = p1;
+              return
+            end
             p2 = indexinto(p2,':');
             ind = s.subs{1};
             ind = ind(:);
@@ -65,9 +69,14 @@ switch s.type
             end
             dim = p1.dim;
             
-          case 2,
+          case 2
             % We are given two subscript arrays.
             % First lets normalize the subscript arrays.
+            if(numel(s.subs{1}) == 0 || numel(s.subs{2}) == 0)
+              q = p1;
+              return
+            end
+            
             if iscolon(s.subs{1}), is = (1:p1.dim(1))';
             else, is = s.subs{1}(:); end
             
